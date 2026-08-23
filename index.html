@@ -1,0 +1,1388 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0B0B0C">
+<title>PittApp</title>
+<style>
+  :root{
+    --bg:#0B0B0C; --panel:#151517; --panel-2:#1C1C1F; --line:#2A2A2E; --text:#F2F0EC; --muted:#9A9AA0;
+    --orange:#E8622C; --green:#5CA86B; --red:#C5473F; --gray1:#C9C7C2; --gray2:#EDEBE6; --blue:#4C8DFF;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:24px 16px 60px;}
+  .card{max-width:400px;margin:0 auto;background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:22px;}
+  h1{font-size:20px;margin:0 0 4px;}
+  .sub{font-size:13px;color:var(--muted);margin:0 0 20px;}
+
+  .tabs{display:flex;gap:4px;background:var(--panel-2);border-radius:10px;padding:4px;margin-bottom:20px;max-width:400px;margin-left:auto;margin-right:auto;}
+  .tabs button{flex:1;border:none;background:transparent;padding:10px;border-radius:7px;font-size:14px;font-weight:600;cursor:pointer;color:var(--muted);}
+  .tabs button.active{background:var(--orange);color:#fff;}
+  .view{display:none;}
+  .view.active{display:block;}
+
+  .seg{position:relative;display:flex;background:var(--panel-2);border-radius:10px;padding:4px;margin-bottom:20px;}
+  .thumb{position:absolute;top:4px;left:4px;width:calc((100% - 8px)/3);height:calc(100% - 8px);background:var(--orange);border-radius:7px;transition:transform .2s ease;}
+  .seg button{position:relative;z-index:1;flex:1;border:none;background:transparent;padding:10px;border-radius:7px;font-size:13.5px;cursor:pointer;color:var(--muted);font-weight:600;}
+  .subhead-mini{font-size:11.5px;color:var(--orange);font-weight:700;text-transform:uppercase;letter-spacing:0.04em;margin:16px 0 8px;}
+  .subhead-mini:first-child{margin-top:0;}
+  label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px;}
+  .field{margin-bottom:16px;}
+  input,select{width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:11px 12px;color:var(--text);font-size:15px;}
+  input:focus,select:focus{outline:none;border-color:var(--orange);}
+  input[type="date"]{width:0;min-width:100%;-webkit-appearance:none;appearance:none;}
+  input[type="date"]::-webkit-date-and-time-value{text-align:left;}
+  #valor{font-size:26px;font-weight:600;padding:10px 12px;}
+  button.submit{width:100%;padding:14px;border:none;border-radius:10px;background:var(--orange);color:#fff;font-size:16px;font-weight:600;cursor:pointer;margin-top:6px;}
+  button.submit:disabled{opacity:.5;}
+  #msg{margin-top:14px;font-size:13.5px;text-align:center;min-height:18px;}
+  #msg.ok{color:var(--green);}
+  #msg.err{color:var(--red);}
+
+  .r-title{font-size:20px;color:var(--gray1);margin:0 0 18px;text-align:center;}
+  .r-total{text-align:center;margin-bottom:22px;font-size:34px;font-weight:600;}
+  .grupo{background:var(--panel-2);border-radius:12px;margin-bottom:10px;overflow:hidden;}
+  .grupo-head{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;cursor:pointer;}
+  .grupo-nome{font-size:15px;color:var(--gray1);font-weight:500;}
+  .grupo-valor{font-size:15px;font-weight:700;}
+  .chev{color:var(--muted);font-size:12px;transition:transform .15s;margin-left:8px;}
+  .grupo.aberto .chev{transform:rotate(90deg);}
+  .grupo-sub{display:none;padding:0 16px 12px;border-top:1px solid var(--line);}
+  .grupo.aberto .grupo-sub{display:block;}
+  .sub-linha{display:flex;justify-content:space-between;padding:9px 4px;font-size:13.5px;color:var(--gray2);}
+  .r-hint{font-size:11px;color:#5f5e5a;margin-top:16px;text-align:center;}
+
+  .screen{display:none;}
+  .screen.active{display:block;}
+  .pin-dots{display:flex;justify-content:center;gap:14px;margin:26px 0;}
+  .pin-dots .dot{width:14px;height:14px;border-radius:50%;background:var(--panel-2);border:1px solid var(--line);}
+  .pin-dots .dot.filled{background:var(--orange);border-color:var(--orange);}
+  .pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:240px;margin:0 auto;}
+  .pin-pad button{padding:16px 0;font-size:20px;font-weight:600;background:var(--panel-2);border:1px solid var(--line);border-radius:12px;color:var(--text);cursor:pointer;}
+  .pin-pad button:active{background:var(--orange);color:#fff;}
+  .pin-pad button.empty{visibility:hidden;cursor:default;}
+  .link-sutil{text-align:center;font-size:12px;color:var(--muted);margin-top:18px;cursor:pointer;text-decoration:underline;}
+  .link-sutil-left{text-align:left;font-size:12px;color:var(--muted);margin:-10px 0 16px;cursor:pointer;text-decoration:underline;}
+  .sair-link{text-align:center;font-size:11px;color:var(--muted);margin:-12px 0 16px;cursor:pointer;max-width:400px;margin-left:auto;margin-right:auto;}
+
+  .top-bar{max-width:400px;margin:0 auto 8px;display:flex;align-items:center;}
+  .menu-btn{background:none;border:none;color:var(--text);font-size:22px;line-height:1;cursor:pointer;padding:6px 10px 6px 0;}
+  .menu-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:40;}
+  .menu-overlay.active{display:block;}
+  .menu-drawer{position:fixed;top:0;left:0;bottom:0;width:250px;background:var(--panel);border-right:1px solid var(--line);z-index:50;transform:translateX(-100%);transition:transform .22s ease;padding:22px 16px;}
+  .menu-drawer.active{transform:translateX(0);}
+  .menu-title{font-size:18px;margin:0 0 22px;}
+  .menu-nav{display:flex;flex-direction:column;gap:2px;}
+  .menu-nav button{text-align:left;background:none;border:none;color:var(--text);font-size:15px;padding:12px 10px;border-radius:8px;cursor:pointer;}
+  .menu-nav button.active{background:var(--panel-2);color:var(--orange);font-weight:600;}
+  .menu-nav button:active{background:var(--panel-2);}
+  .menu-hint{font-size:11px;color:var(--muted);margin-top:24px;line-height:1.5;}
+
+  .lf-row{display:flex;gap:10px;}
+  .lf-row .field{flex:1;}
+  .lanc-item{display:flex;justify-content:space-between;align-items:flex-start;padding:11px 2px;border-bottom:1px solid var(--line);font-size:13.5px;gap:10px;}
+  .lanc-item:last-child{border-bottom:none;}
+  .lanc-meta{color:var(--muted);font-size:11.5px;margin-top:2px;}
+  .moeda-tag{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.02em;padding:1px 6px;border-radius:6px;vertical-align:middle;}
+  .moeda-brl{background:var(--panel-2);color:var(--muted);}
+  .moeda-outra{background:rgba(76,141,255,0.18);color:var(--blue);}
+
+  .destaque-card{text-align:center;margin:18px 0 8px;}
+  .destaque-titulo{font-size:13px;color:var(--muted);margin-bottom:2px;text-transform:uppercase;letter-spacing:.04em;}
+  .destaque-total{font-size:40px;font-weight:700;color:var(--orange);margin-bottom:14px;}
+  .destaque-sub{display:flex;justify-content:space-between;gap:8px;}
+  .destaque-sub-item{flex:1;background:var(--panel-2);border-radius:10px;padding:10px 4px;}
+  .destaque-sub-item .num{font-size:18px;font-weight:700;color:var(--gray2);display:block;}
+  .destaque-sub-item .lbl{font-size:10px;color:var(--muted);margin-top:2px;display:block;}
+  .chart-titulo{font-size:13px;color:var(--gray1);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin:18px 0 8px;text-align:center;}
+  .chart-titulo.laranja{color:var(--orange);}
+</style>
+</head>
+<body>
+
+  <div id="screen-login" class="screen active">
+    <div class="card">
+      <h1>PittApp</h1>
+      <p class="sub">Entrar</p>
+      <div class="field">
+        <label>E-mail</label>
+        <input id="login-email" type="email" placeholder="voce@email.com" autocomplete="username" />
+      </div>
+      <div class="field">
+        <label>Senha</label>
+        <input id="login-senha" type="password" placeholder="••••••••" autocomplete="current-password" onkeypress="if(event.key==='Enter')fazerLogin()" />
+      </div>
+      <button class="submit" id="btn-login" onclick="fazerLogin()">Entrar</button>
+      <div id="login-msg"></div>
+    </div>
+  </div>
+
+  <div id="screen-pin" class="screen">
+    <div class="card" style="text-align:center;">
+      <h1>PittApp</h1>
+      <p class="sub">Digite seu PIN</p>
+      <div class="pin-dots" id="pin-dots">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+      </div>
+      <div class="pin-pad" id="pin-pad"></div>
+      <div id="pin-msg"></div>
+      <p class="link-sutil" onclick="esqueciPin()">Esqueci o PIN / trocar de conta</p>
+    </div>
+  </div>
+
+  <div id="screen-setpin" class="screen">
+    <div class="card" style="text-align:center;">
+      <h1>PittApp</h1>
+      <p class="sub">Crie um PIN de 4 dígitos pra abrir mais rápido</p>
+      <div class="pin-dots" id="setpin-dots">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+      </div>
+      <div class="pin-pad" id="setpin-pad"></div>
+      <div id="setpin-msg"></div>
+      <p class="link-sutil" onclick="pularPin()">Pular por enquanto</p>
+    </div>
+  </div>
+
+  <div id="screen-app" class="screen">
+
+  <div id="menu-overlay" class="menu-overlay" onclick="fecharMenu()"></div>
+  <div id="menu-drawer" class="menu-drawer">
+    <h2 class="menu-title">PittApp</h2>
+    <nav class="menu-nav">
+      <button id="menu-btn-lancar" class="active" onclick="irParaView('lancar')">Lançar</button>
+      <button id="menu-btn-resumo" onclick="irParaView('resumo')">Resumo</button>
+      <button id="menu-btn-lancamentos" onclick="irParaView('lancamentos')">Lançamentos</button>
+      <button id="menu-btn-treinos" onclick="irParaView('treinos')">Treinos</button>
+      <button id="menu-btn-analise" onclick="irParaView('analise')">Análise Treinos</button>
+    </nav>
+    <p class="menu-hint">Mais abas em breve: gerenciar grupos/subgrupos, reclassificar lançamentos em massa.</p>
+  </div>
+
+  <div class="top-bar">
+    <button class="menu-btn" onclick="abrirMenu()">☰</button>
+  </div>
+
+  <div class="tabs">
+    <button id="tab-btn-lancar" class="active" onclick="irParaView('lancar')">Lançar</button>
+    <button id="tab-btn-resumo" onclick="irParaView('resumo')">Resumo</button>
+  </div>
+  <p class="sair-link" onclick="sair()">Sair</p>
+
+  <div id="view-lancar" class="view active">
+    <div class="card">
+      <h1>PittApp</h1>
+      <p class="sub">Novo lançamento</p>
+
+      <div class="seg">
+        <div class="thumb" id="thumb"></div>
+        <button id="btn-entrada" type="button" onclick="setFluxo('entrada')">Entrada</button>
+        <button id="btn-saida" type="button" onclick="setFluxo('saida')">Saída</button>
+        <button id="btn-entre-contas" type="button" onclick="setFluxo('entre_contas')">Entre Contas</button>
+      </div>
+
+      <div id="campos-padrao">
+        <div class="field">
+          <label>Valor</label>
+          <input id="valor" inputmode="decimal" placeholder="0,00" />
+        </div>
+
+        <div class="field">
+          <label>Moeda</label>
+          <select id="moeda"></select>
+        </div>
+
+        <div class="field">
+          <label>Grupo</label>
+          <select id="cat-macro" onchange="updateMicro()"></select>
+        </div>
+
+        <div class="field" id="micro-wrap">
+          <label>Subgrupo</label>
+          <select id="cat-micro"></select>
+        </div>
+
+        <div class="field">
+          <label>Conta</label>
+          <select id="conta"></select>
+        </div>
+
+        <div class="field">
+          <label>Categoria</label>
+          <select id="dono">
+            <option value="Matheus">Matheus</option>
+            <option value="Casa">Casa</option>
+            <option value="Michelle">Michelle</option>
+          </select>
+        </div>
+
+        <div class="field" id="parcelado-wrap" style="display:none;">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:0;">
+            <input type="checkbox" id="parcelado-check" onchange="toggleParcelas()" style="width:auto;" />
+            <span>Compra parcelada</span>
+          </label>
+        </div>
+
+        <div class="field" id="parcelas-wrap" style="display:none;">
+          <label>Número de parcelas</label>
+          <input id="parcelas-num" type="number" min="2" max="60" inputmode="numeric" placeholder="Ex: 10" />
+        </div>
+      </div>
+
+      <div id="campos-entre-contas" style="display:none;">
+        <p class="subhead-mini">Saída</p>
+        <div class="field">
+          <label>Conta de saída</label>
+          <select id="conta-saida"></select>
+        </div>
+        <div class="field">
+          <label>Valor de saída</label>
+          <input id="valor-saida" inputmode="decimal" placeholder="0,00" />
+        </div>
+        <div class="field">
+          <label>Moeda de saída</label>
+          <select id="moeda-saida"></select>
+        </div>
+
+        <p class="subhead-mini">Entrada</p>
+        <div class="field">
+          <label>Conta de entrada</label>
+          <select id="conta-entrada"></select>
+        </div>
+        <div class="field">
+          <label>Valor de entrada</label>
+          <input id="valor-entrada" inputmode="decimal" placeholder="0,00" />
+        </div>
+        <div class="field">
+          <label>Moeda de entrada</label>
+          <select id="moeda-entrada"></select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Data</label>
+        <input id="data" type="date" />
+      </div>
+
+      <div class="field">
+        <label>Observação (opcional)</label>
+        <input id="obs" type="text" placeholder="Ex: Ida pra Limeira" />
+      </div>
+
+      <button class="submit" id="btn-salvar" onclick="salvar()">Salvar lançamento</button>
+      <div id="msg"></div>
+    </div>
+  </div>
+
+  <div id="view-resumo" class="view">
+    <div class="card">
+      <h1 class="r-title">Patrimônio</h1>
+      <div id="r-total" class="r-total"></div>
+      <div id="r-grupos"></div>
+      <p class="r-hint">Toque num grupo pra abrir as contas dele</p>
+    </div>
+  </div>
+
+  <div id="view-lancamentos" class="view">
+    <div class="card">
+      <h1>Lançamentos</h1>
+      <p class="sub">Consulta e filtro</p>
+
+      <div class="field">
+        <input id="lf-texto" type="text" placeholder="Buscar por texto, categoria, conta..." oninput="filtrarLancamentos()" />
+      </div>
+
+      <div class="lf-row">
+        <div class="field">
+          <label>De</label>
+          <input id="lf-data-de" type="date" onchange="carregarLancamentos()" />
+        </div>
+        <div class="field">
+          <label>Até</label>
+          <input id="lf-data-ate" type="date" onchange="carregarLancamentos()" />
+        </div>
+      </div>
+
+      <div class="lf-row">
+        <div class="field">
+          <label>Conta</label>
+          <select id="lf-conta" onchange="carregarLancamentos()"></select>
+        </div>
+        <div class="field">
+          <label>Fluxo</label>
+          <select id="lf-fluxo" onchange="carregarLancamentos()">
+            <option value="">Todos</option>
+            <option value="entrada">Entrada</option>
+            <option value="saida">Saída</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Categoria</label>
+        <select id="lf-dono" onchange="carregarLancamentos()">
+          <option value="">Todas</option>
+          <option value="Casa">Casa</option>
+          <option value="Matheus">Matheus</option>
+          <option value="Michelle">Michelle</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Status</label>
+        <div class="seg" id="lf-status-seg" style="margin-bottom:0;">
+          <div class="thumb" id="lf-status-thumb"></div>
+          <button type="button" onclick="setLfStatus('tudo')">Tudo</button>
+          <button type="button" onclick="setLfStatus('pago')">Pago</button>
+          <button type="button" onclick="setLfStatus('a_pagar')">A pagar</button>
+        </div>
+      </div>
+
+      <div id="lf-lista"></div>
+      <p class="r-hint" id="lf-count"></p>
+    </div>
+  </div>
+
+  <div id="view-treinos" class="view">
+    <div class="card">
+      <h1>PittApp</h1>
+      <p class="sub">Adicionar treino</p>
+
+      <div class="field">
+        <label>Data</label>
+        <input id="data-treino" type="date" />
+      </div>
+
+      <div class="field">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:0;">
+          <input type="checkbox" id="aerobico-check" onchange="toggleAerobico()" style="width:auto;" />
+          <span>Aeróbico</span>
+        </label>
+      </div>
+
+      <div id="aerobico-wrap" style="display:none;">
+        <div class="lf-row">
+          <div class="field">
+            <label>Tempo (min)</label>
+            <input id="aerobico-tempo" type="number" min="1" inputmode="numeric" placeholder="Ex: 30" />
+          </div>
+          <div class="field">
+            <label>Distância (km)</label>
+            <input id="aerobico-distancia" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Ex: 5" />
+          </div>
+        </div>
+      </div>
+
+      <div id="treino-selects"></div>
+
+      <div class="field">
+        <label>Observação (opcional)</label>
+        <input id="obs-treino" type="text" placeholder="Ex: Treino puxado hoje" />
+      </div>
+
+      <button class="submit" id="btn-salvar-treino" onclick="salvarTreino()">Salvar treino</button>
+      <div id="msg-treino"></div>
+    </div>
+  </div>
+
+  <div id="view-analise" class="view">
+    <div class="card">
+      <h1>PittApp</h1>
+      <p class="sub">Análise de treinos</p>
+
+      <div class="lf-row">
+        <div class="field">
+          <label>De</label>
+          <input id="an-data-de" type="date" onchange="carregarAnalise()" />
+        </div>
+        <div class="field">
+          <label>Até</label>
+          <input id="an-data-ate" type="date" onchange="carregarAnalise()" />
+        </div>
+      </div>
+
+      <div class="destaque-card">
+        <div class="destaque-titulo" id="an-destaque-titulo">Treinos</div>
+        <div class="destaque-total" id="an-destaque-total">0</div>
+        <div class="destaque-sub">
+          <div class="destaque-sub-item"><span class="num" id="an-sub-musculacao">0</span><span class="lbl">Musculação</span></div>
+          <div class="destaque-sub-item"><span class="num" id="an-sub-aerobico">0</span><span class="lbl">Aeróbico</span></div>
+          <div class="destaque-sub-item"><span class="num" id="an-sub-futebol">0</span><span class="lbl">Futebol</span></div>
+          <div class="destaque-sub-item"><span class="num" id="an-sub-crossfit">0</span><span class="lbl">Crossfit</span></div>
+        </div>
+      </div>
+
+      <p class="chart-titulo laranja">Treinos por mês</p>
+      <div style="position:relative;height:220px;">
+        <canvas id="analise-chart-total"></canvas>
+      </div>
+
+      <p class="chart-titulo">Tipos de treino</p>
+      <div style="position:relative;height:280px;margin-top:8px;">
+        <canvas id="analise-chart"></canvas>
+      </div>
+
+      <p class="r-hint" id="an-hint"></p>
+    </div>
+  </div>
+
+  </div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+const SUPABASE_URL = 'https://siaxiusolkminsprvdmc.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNpYXhpdXNvbGttaW5zcHJ2ZG1jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYzMDY5NjgsImV4cCI6MjEwMTg4Mjk2OH0.7zD0mM5xSjaUXYxGbsWxjerlOjpBXNteZ-IyS3eSIcg';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let categorias = [];
+let fluxoAtual = 'entrada';
+let resumoCarregado = false;
+let entradaEditadaManualmente = false;
+let lancamentosCarregados = false;
+let lancamentosTodos = [];
+let lfStatusFiltro = 'tudo';
+let analiseCarregada = false;
+
+const MOEDAS = ['BRL', 'USD', 'CLP', 'ARS', 'EUR'];
+
+function fillMoedaSelect(sel){
+  sel.innerHTML = MOEDAS.map(m => `<option value="${m}">${m}</option>`).join('');
+  sel.value = 'BRL';
+}
+
+function irParaView(nome){
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + nome).classList.add('active');
+  document.getElementById('tab-btn-lancar').classList.toggle('active', nome === 'lancar');
+  document.getElementById('tab-btn-resumo').classList.toggle('active', nome === 'resumo');
+  document.getElementById('menu-btn-lancar').classList.toggle('active', nome === 'lancar');
+  document.getElementById('menu-btn-resumo').classList.toggle('active', nome === 'resumo');
+  document.getElementById('menu-btn-lancamentos').classList.toggle('active', nome === 'lancamentos');
+  document.getElementById('menu-btn-treinos').classList.toggle('active', nome === 'treinos');
+  document.getElementById('menu-btn-analise').classList.toggle('active', nome === 'analise');
+  if(nome === 'resumo' && !resumoCarregado){
+    carregarResumo();
+  }
+  if(nome === 'lancamentos' && !lancamentosCarregados){
+    carregarLancamentos();
+  }
+  if(nome === 'analise' && !analiseCarregada){
+    carregarAnalise();
+  }
+  fecharMenu();
+}
+
+function abrirMenu(){
+  document.getElementById('menu-overlay').classList.add('active');
+  document.getElementById('menu-drawer').classList.add('active');
+}
+
+function fecharMenu(){
+  document.getElementById('menu-overlay').classList.remove('active');
+  document.getElementById('menu-drawer').classList.remove('active');
+}
+
+function pad(n){ return n<10 ? '0'+n : ''+n; }
+
+function setDefaultData(id){
+  const d = new Date();
+  document.getElementById(id || 'data').value = d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+}
+
+function getDataHoraIso(){
+  const data = document.getElementById('data').value;
+  if(!data) return null;
+  const agora = new Date();
+  const dataObj = new Date(data + 'T00:00:00');
+  dataObj.setHours(agora.getHours(), agora.getMinutes(), agora.getSeconds());
+  return dataObj.toISOString();
+}
+
+function fillSelect(sel, items, labelFn){
+  sel.innerHTML = items.map(it => `<option value="${it.id}">${labelFn(it)}</option>`).join('');
+}
+
+function updateMicro(){
+  const macroSel = document.getElementById('cat-macro');
+  const wrap = document.getElementById('micro-wrap');
+  const macroId = macroSel.value;
+  const micros = categorias.filter(c => c.categoria_pai_id === macroId);
+  if(micros.length === 0){
+    wrap.style.display='none';
+  } else {
+    wrap.style.display='block';
+    fillSelect(document.getElementById('cat-micro'), micros, c => c.nome);
+  }
+}
+
+function setFluxo(tipo){
+  fluxoAtual = tipo;
+  const thumb=document.getElementById('thumb'), e=document.getElementById('btn-entrada'), s=document.getElementById('btn-saida'), ec=document.getElementById('btn-entre-contas');
+  const pos = { entrada: '0%', saida: '100%', entre_contas: '200%' };
+  thumb.style.transform = 'translateX(' + pos[tipo] + ')';
+  e.style.color = tipo==='entrada' ? '#fff' : '';
+  s.style.color = tipo==='saida' ? '#fff' : '';
+  ec.style.color = tipo==='entre_contas' ? '#fff' : '';
+
+  const padrao = document.getElementById('campos-padrao');
+  const entreContas = document.getElementById('campos-entre-contas');
+
+  if(tipo === 'entre_contas'){
+    padrao.style.display = 'none';
+    entreContas.style.display = 'block';
+    return;
+  }
+  padrao.style.display = 'block';
+  entreContas.style.display = 'none';
+
+  document.getElementById('parcelado-wrap').style.display = (tipo === 'saida') ? 'block' : 'none';
+  if(tipo !== 'saida'){
+    document.getElementById('parcelado-check').checked = false;
+    toggleParcelas();
+  }
+
+  const macroSel = document.getElementById('cat-macro');
+  const list = categorias.filter(c => c.fluxo === tipo && c.categoria_pai_id === null);
+  fillSelect(macroSel, list, c => c.nome);
+  updateMicro();
+}
+
+function toggleParcelas(){
+  const marcado = document.getElementById('parcelado-check').checked;
+  document.getElementById('parcelas-wrap').style.display = marcado ? 'block' : 'none';
+}
+
+function somaMeses(dataIso, n){
+  const d = new Date(dataIso);
+  d.setMonth(d.getMonth() + n);
+  return d.toISOString();
+}
+
+function gerarParcelas(valorTotal, n, categoriaId, contaId, moeda, dono, dataHoraIso, obsBase){
+  const totalCentavos = Math.round(valorTotal * 100);
+  const baseCentavos = Math.floor(totalCentavos / n);
+  const resto = totalCentavos - baseCentavos * n;
+  const registros = [];
+  for(let i = 0; i < n; i++){
+    const centavos = baseCentavos + (i < resto ? 1 : 0);
+    const obs = (obsBase ? obsBase + ' ' : '') + (i + 1) + '/' + n;
+    registros.push({
+      fluxo: 'saida',
+      valor: centavos / 100,
+      categoria_id: categoriaId,
+      conta_id: contaId,
+      moeda: moeda,
+      dono: dono,
+      data_hora: somaMeses(dataHoraIso, i),
+      observacao: obs
+    });
+  }
+  return registros;
+}
+
+async function carregarDados(){
+  const { data: cats, error: e1 } = await sb.from('categorias').select('id, fluxo, nome, categoria_pai_id').eq('ativa', true);
+  const { data: contas, error: e2 } = await sb.from('contas').select('id, nome').eq('ativa', true).order('ordem');
+  if(e1 || e2){
+    showMsg('Erro ao carregar: ' + ((e1 && e1.message) || (e2 && e2.message)), 'err');
+    return;
+  }
+  categorias = cats;
+  fillSelect(document.getElementById('conta'), contas, c => c.nome);
+  fillSelect(document.getElementById('conta-saida'), contas, c => c.nome);
+  fillSelect(document.getElementById('conta-entrada'), contas, c => c.nome);
+  document.getElementById('lf-conta').innerHTML = '<option value="">Todas</option>' + contas.map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
+  fillMoedaSelect(document.getElementById('moeda'));
+  fillMoedaSelect(document.getElementById('moeda-saida'));
+  fillMoedaSelect(document.getElementById('moeda-entrada'));
+
+  const valorSaidaEl = document.getElementById('valor-saida');
+  const valorEntradaEl = document.getElementById('valor-entrada');
+  valorSaidaEl.addEventListener('input', () => {
+    if(!entradaEditadaManualmente) valorEntradaEl.value = valorSaidaEl.value;
+  });
+  valorEntradaEl.addEventListener('input', () => { entradaEditadaManualmente = true; });
+
+  setFluxo('entrada');
+}
+
+function showMsg(text, type){
+  const m = document.getElementById('msg');
+  m.textContent = text;
+  m.className = type;
+}
+
+function parseValor(raw){
+  return parseFloat((raw || '').replace(/\./g,'').replace(',', '.'));
+}
+
+function validarTravaCasa(categoriaId, dono){
+  const cat = categorias.find(c => c.id === categoriaId);
+  if(!cat) return true;
+  if(cat.nome.startsWith('Casa - ') && dono !== 'Casa') return false;
+  return true;
+}
+
+async function salvar(){
+  if(fluxoAtual === 'entre_contas'){
+    await salvarEntreContas();
+    return;
+  }
+
+  const btn = document.getElementById('btn-salvar');
+  const valor = parseValor(document.getElementById('valor').value);
+  if(!valor || valor <= 0){
+    showMsg('Informa um valor válido.', 'err');
+    return;
+  }
+  const microSel = document.getElementById('cat-micro');
+  const microVisible = document.getElementById('micro-wrap').style.display !== 'none';
+  const categoriaId = microVisible ? microSel.value : document.getElementById('cat-macro').value;
+  const contaId = document.getElementById('conta').value;
+  const moeda = document.getElementById('moeda').value;
+  const dono = document.getElementById('dono').value;
+  const dataHoraIso = getDataHoraIso();
+  const obs = document.getElementById('obs').value || null;
+
+  if(!categoriaId || !contaId || !dataHoraIso){
+    showMsg('Preenche categoria, conta e data.', 'err');
+    return;
+  }
+
+  if(!validarTravaCasa(categoriaId, dono)){
+    showMsg('Esse grupo/subgrupo é da Casa — muda a Categoria pra Casa ou escolhe outro.', 'err');
+    return;
+  }
+
+  const parcelado = fluxoAtual === 'saida' && document.getElementById('parcelado-check').checked;
+  const numParcelas = parcelado ? parseInt(document.getElementById('parcelas-num').value, 10) : 1;
+
+  if(parcelado && (!numParcelas || numParcelas < 2)){
+    showMsg('Informa um número de parcelas válido (mínimo 2).', 'err');
+    return;
+  }
+
+  btn.disabled = true;
+  showMsg('Salvando...', '');
+
+  const registros = parcelado
+    ? gerarParcelas(valor, numParcelas, categoriaId, contaId, moeda, dono, dataHoraIso, obs)
+    : [{ fluxo: fluxoAtual, valor: valor, categoria_id: categoriaId, conta_id: contaId, moeda: moeda, dono: dono, data_hora: dataHoraIso, observacao: obs }];
+
+  const { error } = await sb.from('lancamentos').insert(registros);
+
+  btn.disabled = false;
+
+  if(error){
+    showMsg('Erro ao salvar: ' + error.message, 'err');
+  } else {
+    showMsg(parcelado ? ('Compra parcelada em ' + numParcelas + 'x salva!') : 'Lançamento salvo!', 'ok');
+    document.getElementById('valor').value = '';
+    document.getElementById('obs').value = '';
+    document.getElementById('parcelado-check').checked = false;
+    document.getElementById('parcelas-num').value = '';
+    toggleParcelas();
+    setDefaultData();
+    resumoCarregado = false;
+    lancamentosCarregados = false;
+  }
+}
+
+async function salvarEntreContas(){
+  const btn = document.getElementById('btn-salvar');
+  const contaSaidaId = document.getElementById('conta-saida').value;
+  const contaEntradaId = document.getElementById('conta-entrada').value;
+  const valorSaida = parseValor(document.getElementById('valor-saida').value);
+  const valorEntrada = parseValor(document.getElementById('valor-entrada').value);
+  const moedaSaida = document.getElementById('moeda-saida').value;
+  const moedaEntrada = document.getElementById('moeda-entrada').value;
+  const dataHoraIso = getDataHoraIso();
+  const obs = document.getElementById('obs').value || null;
+
+  if(!valorSaida || valorSaida <= 0 || !valorEntrada || valorEntrada <= 0){
+    showMsg('Informa os dois valores.', 'err');
+    return;
+  }
+  if(!contaSaidaId || !contaEntradaId || !dataHoraIso){
+    showMsg('Preenche as duas contas e a data.', 'err');
+    return;
+  }
+  if(contaSaidaId === contaEntradaId){
+    showMsg('Conta de saída e de entrada precisam ser diferentes.', 'err');
+    return;
+  }
+
+  const catSaida = categorias.find(c => c.nome === 'Entre Contas' && c.fluxo === 'saida' && c.categoria_pai_id === null);
+  const catEntrada = categorias.find(c => c.nome === 'Entre Contas' && c.fluxo === 'entrada' && c.categoria_pai_id === null);
+  if(!catSaida || !catEntrada){
+    showMsg('Categoria "Entre Contas" não encontrada.', 'err');
+    return;
+  }
+
+  btn.disabled = true;
+  showMsg('Salvando...', '');
+
+  const { error } = await sb.from('lancamentos').insert([
+    { fluxo: 'saida', valor: valorSaida, categoria_id: catSaida.id, conta_id: contaSaidaId, moeda: moedaSaida, dono: 'Matheus', data_hora: dataHoraIso, observacao: obs },
+    { fluxo: 'entrada', valor: valorEntrada, categoria_id: catEntrada.id, conta_id: contaEntradaId, moeda: moedaEntrada, dono: 'Matheus', data_hora: dataHoraIso, observacao: obs }
+  ]);
+
+  btn.disabled = false;
+
+  if(error){
+    showMsg('Erro ao salvar: ' + error.message, 'err');
+  } else {
+    showMsg('Transferência salva!', 'ok');
+    document.getElementById('valor-saida').value = '';
+    document.getElementById('valor-entrada').value = '';
+    document.getElementById('obs').value = '';
+    entradaEditadaManualmente = false;
+    setDefaultData();
+    resumoCarregado = false;
+    lancamentosCarregados = false;
+  }
+}
+
+function fmt(v){
+  const neg = v < 0;
+  const abs = Math.abs(v).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+  return neg ? '(' + abs + ')' : abs;
+}
+
+function tagMoeda(moeda){
+  if(!moeda || moeda === 'BRL') return '<span class="moeda-tag moeda-brl">BRL</span>';
+  return `<span class="moeda-tag moeda-outra">${moeda}</span>`;
+}
+
+// Busca a cotação USD->BRL do dia numa API pública (sem chave, sem custo).
+// Se a busca falhar (sem internet, API fora do ar, etc.), cai pro último valor
+// salvo na tabela config — e se nem isso existir, usa 1:1 como último recurso.
+async function buscarCotacaoUsd(){
+  try{
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
+    const resp = await fetch('https://api.frankfurter.app/latest?from=USD&to=BRL', { signal: controller.signal });
+    clearTimeout(timeout);
+    const json = await resp.json();
+    const cotacao = json && json.rates && json.rates.BRL;
+    if(cotacao && !isNaN(cotacao)){
+      // guarda o valor buscado como cache, pra servir de fallback na próxima vez
+      sb.from('config').update({ valor: String(cotacao), atualizado_em: new Date().toISOString() }).eq('chave', 'cotacao_usd_brl').then(() => {});
+      return cotacao;
+    }
+  } catch(e){
+    console.warn('Não deu pra buscar cotação USD/BRL ao vivo, usando fallback salvo:', e.message);
+  }
+
+  const { data: cfg, error: e3 } = await sb.from('config').select('valor').eq('chave', 'cotacao_usd_brl').maybeSingle();
+  if(e3) console.error('Erro ao buscar cotação USD/BRL salva, usando 1:1 como último fallback:', e3.message);
+  return (cfg && !isNaN(parseFloat(cfg.valor))) ? parseFloat(cfg.valor) : 1;
+}
+
+async function carregarResumo(){
+  const totalEl = document.getElementById('r-total');
+  const gruposEl = document.getElementById('r-grupos');
+  totalEl.textContent = '...';
+  gruposEl.innerHTML = '';
+
+  const { data: contas, error: e1 } = await sb.from('contas').select('id, nome, ordem, grupo_resumo').eq('ativa', true).not('grupo_resumo', 'is', null).order('ordem');
+  const cotacaoUsd = await buscarCotacaoUsd();
+
+  // O Supabase limita cada consulta a 1000 linhas por padrão — com o histórico
+  // completo migrado (5800+ lançamentos), é preciso buscar em páginas até
+  // esgotar os dados, senão o saldo soma só uma fatia parcial.
+  let lancs = [];
+  let e2 = null;
+  const PAGE = 1000;
+  for(let from = 0; ; from += PAGE){
+    const { data: pagina, error: erroPagina } = await sb.from('lancamentos').select('conta_id, fluxo, valor, moeda').range(from, from + PAGE - 1);
+    if(erroPagina){ e2 = erroPagina; break; }
+    lancs = lancs.concat(pagina);
+    if(pagina.length < PAGE) break;
+  }
+
+  if(e1 || e2){
+    totalEl.textContent = 'erro';
+    gruposEl.innerHTML = '<p style="color:var(--red);font-size:13px;text-align:center;">' + ((e1 && e1.message) || (e2 && e2.message)) + '</p>';
+    return;
+  }
+
+  const saldoPorConta = {};
+  const moedaPorConta = {};
+  contas.forEach(c => { saldoPorConta[c.id] = 0; moedaPorConta[c.id] = 'BRL'; });
+  lancs.forEach(l => {
+    if(!(l.conta_id in saldoPorConta)) return;
+    saldoPorConta[l.conta_id] += (l.fluxo === 'entrada' ? 1 : -1) * Number(l.valor);
+    if(l.moeda && l.moeda !== 'BRL') moedaPorConta[l.conta_id] = l.moeda;
+  });
+
+  function saldoBRL(contaId){
+    const moeda = moedaPorConta[contaId];
+    const saldo = saldoPorConta[contaId];
+    return moeda === 'USD' ? saldo * cotacaoUsd : saldo;
+  }
+
+  const gruposMap = {};
+  const ordemGrupo = [];
+  contas.forEach(c => {
+    if(!gruposMap[c.grupo_resumo]){
+      gruposMap[c.grupo_resumo] = [];
+      ordemGrupo.push(c.grupo_resumo);
+    }
+    gruposMap[c.grupo_resumo].push({ nome: c.nome, saldo: saldoPorConta[c.id], moeda: moedaPorConta[c.id], saldoBRL: saldoBRL(c.id) });
+  });
+
+  let totalGeral = 0;
+  contas.forEach(c => totalGeral += saldoBRL(c.id));
+  totalEl.textContent = fmt(totalGeral);
+  totalEl.style.color = 'var(--orange)';
+
+  gruposEl.innerHTML = ordemGrupo.map((nomeGrupo, i) => {
+    const itens = gruposMap[nomeGrupo];
+    const sub = itens.reduce((s, c) => s + c.saldoBRL, 0);
+    const subCor = sub < 0 ? 'var(--red)' : 'var(--gray1)';
+    const linhas = itens.map(c => {
+      const cor = c.saldo < 0 ? 'var(--red)' : 'var(--gray2)';
+      return `<div class="sub-linha" style="color:${cor};"><span>${c.nome} ${tagMoeda(c.moeda)}</span><span style="font-weight:500;">${fmt(c.saldo)}</span></div>`;
+    }).join('');
+    return `
+      <div class="grupo" id="grupo${i}">
+        <div class="grupo-head" onclick="toggleGrupo(${i})">
+          <span class="grupo-nome">${nomeGrupo}</span>
+          <span style="display:flex;align-items:center;">
+            <span class="grupo-valor" style="color:${subCor};">${fmt(sub)}</span>
+            <span class="chev">›</span>
+          </span>
+        </div>
+        <div class="grupo-sub">${linhas}</div>
+      </div>`;
+  }).join('');
+
+  gruposEl.innerHTML += '<p class="r-hint">Valores em moeda diferente de BRL são convertidos pra cotação de R$ ' + cotacaoUsd.toLocaleString('pt-BR',{minimumFractionDigits:2}) + ' no total, mas exibidos na moeda original em cada conta.</p>';
+
+  resumoCarregado = true;
+}
+
+function toggleGrupo(i){
+  document.getElementById('grupo' + i).classList.toggle('aberto');
+}
+
+// ---------- Lançamentos (consulta e filtro) ----------
+
+async function carregarLancamentos(){
+  const de = document.getElementById('lf-data-de').value;
+  const ate = document.getElementById('lf-data-ate').value;
+  const contaId = document.getElementById('lf-conta').value;
+  const fluxo = document.getElementById('lf-fluxo').value;
+  const dono = document.getElementById('lf-dono').value;
+
+  let q = sb.from('lancamentos')
+    .select('id, fluxo, valor, moeda, dono, data_hora, observacao, contas(nome), categorias(nome, grupo)')
+    .order('data_hora', { ascending: false })
+    .limit(500);
+
+  if(de) q = q.gte('data_hora', de + 'T00:00:00');
+  if(ate) q = q.lte('data_hora', ate + 'T23:59:59');
+  if(contaId) q = q.eq('conta_id', contaId);
+  if(fluxo) q = q.eq('fluxo', fluxo);
+  if(dono) q = q.eq('dono', dono);
+
+  const listaEl = document.getElementById('lf-lista');
+  listaEl.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:20px 0;">Carregando...</p>';
+
+  const { data, error } = await q;
+
+  if(error){
+    listaEl.innerHTML = '<p style="color:var(--red);font-size:13px;">Erro: ' + error.message + '</p>';
+    return;
+  }
+
+  lancamentosTodos = data;
+  lancamentosCarregados = true;
+  setLfStatus(lfStatusFiltro);
+}
+
+function setLfStatus(status){
+  lfStatusFiltro = status;
+  const thumb = document.getElementById('lf-status-thumb');
+  const pos = { tudo: '0%', pago: '100%', a_pagar: '200%' };
+  thumb.style.transform = 'translateX(' + pos[status] + ')';
+  const ordem = ['tudo', 'pago', 'a_pagar'];
+  document.querySelectorAll('#lf-status-seg button').forEach((b, i) => {
+    b.style.color = ordem[i] === status ? '#fff' : '';
+  });
+  filtrarLancamentos();
+}
+
+function filtrarLancamentos(){
+  const termo = document.getElementById('lf-texto').value.trim().toLowerCase();
+  let lista = lancamentosTodos;
+  if(termo){
+    lista = lista.filter(l => {
+      const obs = (l.observacao || '').toLowerCase();
+      const cat = (l.categorias ? l.categorias.nome : '').toLowerCase();
+      const grp = (l.categorias ? l.categorias.grupo : '').toLowerCase();
+      const cta = (l.contas ? l.contas.nome : '').toLowerCase();
+      const dn = (l.dono || '').toLowerCase();
+      return obs.includes(termo) || cat.includes(termo) || grp.includes(termo) || cta.includes(termo) || dn.includes(termo);
+    });
+  }
+  if(lfStatusFiltro !== 'tudo'){
+    const agora = new Date();
+    lista = lista.filter(l => {
+      const d = new Date(l.data_hora);
+      return lfStatusFiltro === 'pago' ? d <= agora : d > agora;
+    });
+  }
+  renderLancamentos(lista);
+}
+
+function renderLancamentos(lista){
+  const listaEl = document.getElementById('lf-lista');
+  const countEl = document.getElementById('lf-count');
+  countEl.textContent = lista.length + (lista.length === 1 ? ' lançamento' : ' lançamentos');
+
+  if(lista.length === 0){
+    listaEl.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:20px 0;">Nada encontrado.</p>';
+    return;
+  }
+
+  listaEl.innerHTML = lista.map(l => {
+    const d = new Date(l.data_hora);
+    const dataFmt = pad(d.getDate())+'/'+pad(d.getMonth()+1)+'/'+d.getFullYear()+' '+pad(d.getHours())+':'+pad(d.getMinutes());
+    const sinal = l.fluxo === 'entrada' ? '+' : '-';
+    const cor = l.fluxo === 'entrada' ? 'var(--green)' : 'var(--red)';
+    const catNome = l.categorias ? (l.categorias.grupo && l.categorias.grupo !== l.categorias.nome ? l.categorias.grupo + ' › ' + l.categorias.nome : l.categorias.nome) : '';
+    const contaNome = l.contas ? l.contas.nome : '';
+    const donoTag = l.dono ? ' · ' + l.dono : '';
+    return `
+      <div class="lanc-item">
+        <div>
+          <div>${catNome}</div>
+          <div class="lanc-meta">${dataFmt} · ${contaNome}${donoTag}${l.observacao ? ' · ' + l.observacao : ''}</div>
+        </div>
+        <div style="text-align:right;white-space:nowrap;">
+          <div style="color:${cor};font-weight:600;">${sinal} ${fmt(l.valor)}</div>
+          <div style="margin-top:2px;">${tagMoeda(l.moeda)}</div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ---------- Treinos ----------
+
+const GRUPOS_MUSCULARES = ['Peito', 'Costas', 'Bíceps', 'Tríceps', 'Perna', 'Ombro', 'Abdômen', 'Full Body', 'Futebol', 'Crossfit'];
+const TIPOS_MUSCULACAO = ['Peito', 'Costas', 'Bíceps', 'Tríceps', 'Perna', 'Ombro', 'Abdômen', 'Full Body'];
+let treinosSelecionados = [''];
+
+function renderTreinoSelects(){
+  const wrap = document.getElementById('treino-selects');
+  wrap.innerHTML = treinosSelecionados.map((val, i) => {
+    const usados = treinosSelecionados.filter((v, j) => v && j !== i);
+    const opcoes = GRUPOS_MUSCULARES.filter(g => !usados.includes(g));
+    return `<div class="field">
+      <label>Treino ${i + 1}</label>
+      <select onchange="onTreinoSelectChange(${i}, this.value)">
+        <option value="">Selecionar...</option>
+        ${opcoes.map(g => `<option value="${g}" ${g === val ? 'selected' : ''}>${g}</option>`).join('')}
+      </select>
+    </div>`;
+  }).join('');
+}
+
+function onTreinoSelectChange(i, val){
+  treinosSelecionados[i] = val;
+  if(val && i === treinosSelecionados.length - 1 && treinosSelecionados.length < 5){
+    treinosSelecionados.push('');
+  }
+  renderTreinoSelects();
+}
+
+function toggleAerobico(){
+  const marcado = document.getElementById('aerobico-check').checked;
+  document.getElementById('aerobico-wrap').style.display = marcado ? 'block' : 'none';
+}
+
+function showMsgTreino(text, type){
+  const m = document.getElementById('msg-treino');
+  m.textContent = text;
+  m.className = type;
+}
+
+async function salvarTreino(){
+  const btn = document.getElementById('btn-salvar-treino');
+  const data = document.getElementById('data-treino').value;
+  if(!data){
+    showMsgTreino('Escolhe uma data.', 'err');
+    return;
+  }
+
+  const aerobico = document.getElementById('aerobico-check').checked;
+  const tempoMin = aerobico ? parseInt(document.getElementById('aerobico-tempo').value, 10) : null;
+  const distanciaRaw = document.getElementById('aerobico-distancia').value;
+  const distanciaKm = aerobico && distanciaRaw ? parseFloat(distanciaRaw) : null;
+  const grupos = treinosSelecionados.filter(g => g);
+  const obs = document.getElementById('obs-treino').value || null;
+
+  if(!aerobico && grupos.length === 0){
+    showMsgTreino('Marca aeróbico ou escolhe pelo menos um grupo muscular.', 'err');
+    return;
+  }
+  if(aerobico && (!tempoMin || tempoMin <= 0)){
+    showMsgTreino('Informa o tempo do aeróbico.', 'err');
+    return;
+  }
+
+  const agora = new Date();
+  const dataObj = new Date(data + 'T00:00:00');
+  dataObj.setHours(agora.getHours(), agora.getMinutes(), agora.getSeconds());
+
+  btn.disabled = true;
+  showMsgTreino('Salvando...', '');
+
+  const { error } = await sb.from('treinos').insert([{
+    data_hora: dataObj.toISOString(),
+    aerobico: aerobico,
+    tempo_min: tempoMin,
+    distancia_km: (distanciaKm === null || isNaN(distanciaKm)) ? null : distanciaKm,
+    grupos_musculares: grupos,
+    observacao: obs
+  }]);
+
+  btn.disabled = false;
+
+  if(error){
+    showMsgTreino('Erro ao salvar: ' + error.message, 'err');
+  } else {
+    showMsgTreino('Treino salvo!', 'ok');
+    document.getElementById('aerobico-check').checked = false;
+    toggleAerobico();
+    document.getElementById('aerobico-tempo').value = '';
+    document.getElementById('aerobico-distancia').value = '';
+    document.getElementById('obs-treino').value = '';
+    treinosSelecionados = [''];
+    renderTreinoSelects();
+    setDefaultData('data-treino');
+  }
+}
+
+// ---------- Análise de Treinos ----------
+
+let analiseChart = null;
+let analiseChartTotal = null;
+const NOMES_MES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+
+function setDefaultAnaliseDatas(){
+  document.getElementById('an-data-de').value = '2026-01-01';
+  const d = new Date();
+  document.getElementById('an-data-ate').value = d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+}
+
+async function carregarAnalise(){
+  const de = document.getElementById('an-data-de').value;
+  const ate = document.getElementById('an-data-ate').value;
+  const hintEl = document.getElementById('an-hint');
+  if(!de || !ate){ return; }
+
+  hintEl.textContent = 'Carregando...';
+
+  let treinos = [];
+  let erro = null;
+  const PAGE = 1000;
+  for(let from = 0; ; from += PAGE){
+    const { data: pagina, error } = await sb.from('treinos')
+      .select('data_hora, aerobico, grupos_musculares')
+      .gte('data_hora', de + 'T00:00:00')
+      .lte('data_hora', ate + 'T23:59:59')
+      .order('data_hora')
+      .range(from, from + PAGE - 1);
+    if(error){ erro = error; break; }
+    treinos = treinos.concat(pagina);
+    if(pagina.length < PAGE) break;
+  }
+
+  if(erro){
+    hintEl.textContent = 'Erro ao carregar: ' + erro.message;
+    return;
+  }
+
+  // Monta a lista de meses entre De e Até, mesmo os sem treino, pra manter o eixo contínuo
+  const [anoDe, mesDe] = de.split('-').map(Number);
+  const [anoAte, mesAte] = ate.split('-').map(Number);
+  const meses = [];
+  let ano = anoDe, mes = mesDe;
+  while(ano < anoAte || (ano === anoAte && mes <= mesAte)){
+    meses.push(ano + '-' + pad(mes));
+    mes++;
+    if(mes > 12){ mes = 1; ano++; }
+  }
+
+  const contagem = {};
+  const contagemTotal = {};
+  meses.forEach(m => { contagem[m] = { musculacao: 0, aerobico: 0, futebol: 0, crossfit: 0 }; contagemTotal[m] = 0; });
+
+  treinos.forEach(t => {
+    const chave = t.data_hora.slice(0, 7);
+    if(!contagem[chave]) return;
+    contagemTotal[chave]++;
+    const grupos = t.grupos_musculares || [];
+    if(t.aerobico) contagem[chave].aerobico++;
+    if(grupos.includes('Futebol')) contagem[chave].futebol++;
+    if(grupos.includes('Crossfit')) contagem[chave].crossfit++;
+    if(grupos.some(g => TIPOS_MUSCULACAO.includes(g))) contagem[chave].musculacao++;
+  });
+
+  const labels = meses.map(m => {
+    const [a, mm] = m.split('-');
+    return NOMES_MES[parseInt(mm, 10) - 1] + '/' + a.slice(2);
+  });
+
+  const dataMusculacao = meses.map(m => contagem[m].musculacao);
+  const dataAerobico = meses.map(m => contagem[m].aerobico);
+  const dataFutebol = meses.map(m => contagem[m].futebol);
+  const dataCrossfit = meses.map(m => contagem[m].crossfit);
+  const dataTotal = meses.map(m => contagemTotal[m]);
+
+  hintEl.textContent = treinos.length + (treinos.length === 1 ? ' treino no período' : ' treinos no período');
+
+  // Card de destaque: título usa o(s) ano(s) do filtro selecionado
+  const anoTitulo = anoDe === anoAte ? String(anoDe) : (anoDe + '–' + anoAte);
+  document.getElementById('an-destaque-titulo').textContent = 'Treinos ' + anoTitulo;
+  document.getElementById('an-destaque-total').textContent = treinos.length;
+  document.getElementById('an-sub-musculacao').textContent = dataMusculacao.reduce((s, v) => s + v, 0);
+  document.getElementById('an-sub-aerobico').textContent = dataAerobico.reduce((s, v) => s + v, 0);
+  document.getElementById('an-sub-futebol').textContent = dataFutebol.reduce((s, v) => s + v, 0);
+  document.getElementById('an-sub-crossfit').textContent = dataCrossfit.reduce((s, v) => s + v, 0);
+
+  if(typeof Chart === 'undefined'){
+    hintEl.textContent += ' — não deu pra carregar a biblioteca do gráfico (Chart.js). Tenta recarregar a página.';
+    return;
+  }
+
+  const ctx = document.getElementById('analise-chart').getContext('2d');
+  const cores = {
+    musculacao: '#E8622C',
+    aerobico: '#5CA86B',
+    futebol: '#4C8DFF',
+    crossfit: '#C5473F'
+  };
+
+  if(analiseChart){
+    analiseChart.data.labels = labels;
+    analiseChart.data.datasets[0].data = dataMusculacao;
+    analiseChart.data.datasets[1].data = dataAerobico;
+    analiseChart.data.datasets[2].data = dataFutebol;
+    analiseChart.data.datasets[3].data = dataCrossfit;
+    analiseChart.update();
+  } else {
+    analiseChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [
+          { label: 'Musculação', data: dataMusculacao, backgroundColor: cores.musculacao },
+          { label: 'Aeróbico', data: dataAerobico, backgroundColor: cores.aerobico },
+          { label: 'Futebol', data: dataFutebol, backgroundColor: cores.futebol },
+          { label: 'Crossfit', data: dataCrossfit, backgroundColor: cores.crossfit }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: { ticks: { color: '#9A9AA0' }, grid: { color: '#2A2A2E' } },
+          y: { beginAtZero: true, ticks: { color: '#9A9AA0', precision: 0 }, grid: { color: '#2A2A2E' } }
+        },
+        plugins: {
+          legend: { labels: { color: '#F2F0EC' } }
+        }
+      }
+    });
+  }
+
+  const ctxTotal = document.getElementById('analise-chart-total').getContext('2d');
+
+  if(analiseChartTotal){
+    analiseChartTotal.data.labels = labels;
+    analiseChartTotal.data.datasets[0].data = dataTotal;
+    analiseChartTotal.update();
+  } else {
+    analiseChartTotal = new Chart(ctxTotal, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [
+          { label: 'Treinos', data: dataTotal, backgroundColor: cores.musculacao }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: { ticks: { color: '#9A9AA0' }, grid: { color: '#2A2A2E' } },
+          y: { beginAtZero: true, ticks: { color: '#9A9AA0', precision: 0 }, grid: { color: '#2A2A2E' } }
+        },
+        plugins: {
+          legend: { display: false }
+        }
+      }
+    });
+  }
+
+  analiseCarregada = true;
+}
+
+// ---------- Login, PIN e controle de telas ----------
+
+function irPara(tela){
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + tela).classList.add('active');
+}
+
+async function hashPin(pin){
+  const enc = new TextEncoder().encode(pin);
+  const buf = await crypto.subtle.digest('SHA-256', enc);
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function atualizarDots(id, valor){
+  document.querySelectorAll('#' + id + ' .dot').forEach((d, i) => d.classList.toggle('filled', i < valor.length));
+}
+
+function montarTeclado(containerId, onDigitFn){
+  const el = document.getElementById(containerId);
+  const teclas = ['1','2','3','4','5','6','7','8','9','','0','⌫'];
+  el.innerHTML = teclas.map(t => {
+    if(t === '') return '<button type="button" class="empty" tabindex="-1"></button>';
+    return `<button type="button" onclick="${onDigitFn}('${t}')">${t}</button>`;
+  }).join('');
+}
+
+let pinDigitado = '';
+function pinTecla(t){
+  if(t === '⌫'){ pinDigitado = pinDigitado.slice(0, -1); atualizarDots('pin-dots', pinDigitado); return; }
+  if(pinDigitado.length >= 4) return;
+  pinDigitado += t;
+  atualizarDots('pin-dots', pinDigitado);
+  if(pinDigitado.length === 4) conferirPin();
+}
+
+async function conferirPin(){
+  const digitado = await hashPin(pinDigitado);
+  const salvo = localStorage.getItem('pittapp_pin_hash');
+  if(digitado === salvo){
+    entrarNoApp();
+  } else {
+    const m = document.getElementById('pin-msg');
+    m.textContent = 'PIN incorreto.';
+    m.className = 'err';
+    pinDigitado = '';
+    atualizarDots('pin-dots', '');
+    setTimeout(() => { m.textContent = ''; m.className=''; }, 1500);
+  }
+}
+
+let novoPin = '';
+function setpinTecla(t){
+  if(t === '⌫'){ novoPin = novoPin.slice(0, -1); atualizarDots('setpin-dots', novoPin); return; }
+  if(novoPin.length >= 4) return;
+  novoPin += t;
+  atualizarDots('setpin-dots', novoPin);
+  if(novoPin.length === 4) salvarPin();
+}
+
+async function salvarPin(){
+  const hash = await hashPin(novoPin);
+  localStorage.setItem('pittapp_pin_hash', hash);
+  entrarNoApp();
+}
+
+function pularPin(){
+  entrarNoApp();
+}
+
+function showLoginMsg(t, cls){
+  const m = document.getElementById('login-msg');
+  m.textContent = t;
+  m.className = cls || '';
+}
+
+async function fazerLogin(){
+  const email = document.getElementById('login-email').value.trim();
+  const senha = document.getElementById('login-senha').value;
+  if(!email || !senha){ showLoginMsg('Preenche e-mail e senha.', 'err'); return; }
+  const btn = document.getElementById('btn-login');
+  btn.disabled = true;
+  showLoginMsg('Entrando...', '');
+  const { error } = await sb.auth.signInWithPassword({ email, password: senha });
+  btn.disabled = false;
+  if(error){
+    showLoginMsg('E-mail ou senha incorretos.', 'err');
+    return;
+  }
+  showLoginMsg('', '');
+  aposLogin();
+}
+
+function aposLogin(){
+  const hashSalvo = localStorage.getItem('pittapp_pin_hash');
+  if(hashSalvo){
+    entrarNoApp();
+  } else {
+    novoPin = '';
+    atualizarDots('setpin-dots', '');
+    irPara('setpin');
+  }
+}
+
+function entrarNoApp(){
+  irPara('app');
+  carregarDados();
+  setDefaultData('data-treino');
+  renderTreinoSelects();
+  setDefaultAnaliseDatas();
+}
+
+async function esqueciPin(){
+  localStorage.removeItem('pittapp_pin_hash');
+  await sb.auth.signOut();
+  pinDigitado = '';
+  document.getElementById('login-email').value = '';
+  document.getElementById('login-senha').value = '';
+  irPara('login');
+}
+
+async function sair(){
+  await sb.auth.signOut();
+  document.getElementById('login-email').value = '';
+  document.getElementById('login-senha').value = '';
+  irPara('login');
+}
+
+async function iniciar(){
+  setDefaultData();
+  montarTeclado('pin-pad', 'pinTecla');
+  montarTeclado('setpin-pad', 'setpinTecla');
+
+  const { data } = await sb.auth.getSession();
+  if(data.session){
+    const hashSalvo = localStorage.getItem('pittapp_pin_hash');
+    if(hashSalvo){
+      pinDigitado = '';
+      atualizarDots('pin-dots', '');
+      irPara('pin');
+    } else {
+      entrarNoApp();
+    }
+  } else {
+    irPara('login');
+  }
+}
+
+iniciar();
+</script>
+</body>
+</html>
