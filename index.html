@@ -365,13 +365,17 @@
       <div id="aerobico-wrap" style="display:none;">
         <div class="lf-row">
           <div class="field">
-            <label>Tempo (min)</label>
-            <input id="aerobico-tempo" type="number" min="1" inputmode="numeric" placeholder="Ex: 30" />
+            <label>Minutos</label>
+            <input id="aerobico-tempo" type="number" min="0" inputmode="numeric" placeholder="Ex: 30" />
           </div>
           <div class="field">
-            <label>Distância (km)</label>
-            <input id="aerobico-distancia" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Ex: 5" />
+            <label>Segundos</label>
+            <input id="aerobico-segundos" type="number" min="0" max="59" inputmode="numeric" placeholder="Ex: 45" />
           </div>
+        </div>
+        <div class="field">
+          <label>Distância (km)</label>
+          <input id="aerobico-distancia" type="text" inputmode="decimal" placeholder="Ex: 5,34" />
         </div>
       </div>
 
@@ -1021,9 +1025,16 @@ async function salvarTreino(){
   }
 
   const aerobico = document.getElementById('aerobico-check').checked;
-  const tempoMin = aerobico ? parseInt(document.getElementById('aerobico-tempo').value, 10) : null;
+  const tempoMinRaw = document.getElementById('aerobico-tempo').value;
+  const tempoSegRaw = document.getElementById('aerobico-segundos').value;
+  const tempoMin = aerobico && tempoMinRaw ? parseInt(tempoMinRaw, 10) : (aerobico ? 0 : null);
+  let tempoSeg = aerobico && tempoSegRaw ? parseInt(tempoSegRaw, 10) : (aerobico ? 0 : null);
+  if(aerobico && tempoSeg !== null){
+    if(isNaN(tempoSeg) || tempoSeg < 0) tempoSeg = 0;
+    if(tempoSeg > 59) tempoSeg = 59;
+  }
   const distanciaRaw = document.getElementById('aerobico-distancia').value;
-  const distanciaKm = aerobico && distanciaRaw ? parseFloat(distanciaRaw) : null;
+  const distanciaKm = aerobico && distanciaRaw ? parseFloat(distanciaRaw.replace(',', '.')) : null;
   const grupos = treinosSelecionados.filter(g => g);
   const obs = document.getElementById('obs-treino').value || null;
 
@@ -1031,8 +1042,8 @@ async function salvarTreino(){
     showMsgTreino('Marca aeróbico ou escolhe pelo menos um grupo muscular.', 'err');
     return;
   }
-  if(aerobico && (!tempoMin || tempoMin <= 0)){
-    showMsgTreino('Informa o tempo do aeróbico.', 'err');
+  if(aerobico && (tempoMin || 0) === 0 && (tempoSeg || 0) === 0){
+    showMsgTreino('Informa o tempo do aeróbico (minutos e/ou segundos).', 'err');
     return;
   }
 
@@ -1047,6 +1058,7 @@ async function salvarTreino(){
     data_hora: dataObj.toISOString(),
     aerobico: aerobico,
     tempo_min: tempoMin,
+    tempo_seg: tempoSeg,
     distancia_km: (distanciaKm === null || isNaN(distanciaKm)) ? null : distanciaKm,
     grupos_musculares: grupos,
     observacao: obs
@@ -1061,6 +1073,7 @@ async function salvarTreino(){
     document.getElementById('aerobico-check').checked = false;
     toggleAerobico();
     document.getElementById('aerobico-tempo').value = '';
+    document.getElementById('aerobico-segundos').value = '';
     document.getElementById('aerobico-distancia').value = '';
     document.getElementById('obs-treino').value = '';
     treinosSelecionados = [''];
