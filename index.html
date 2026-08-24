@@ -99,6 +99,13 @@
   .destaque-sub-item .lbl{font-size:10px;color:var(--muted);margin-top:2px;display:block;}
   .chart-titulo{font-size:13px;color:var(--gray1);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin:18px 0 8px;text-align:center;}
   .chart-titulo.laranja{color:var(--orange);}
+
+  .pos-item{background:var(--panel-2);border-radius:10px;padding:12px 14px;margin-bottom:8px;}
+  .pos-item-top{display:flex;justify-content:space-between;align-items:center;}
+  .pos-ticker{font-weight:700;font-size:14px;}
+  .pos-valor-atual{font-weight:700;font-size:14px;cursor:pointer;text-decoration:underline dotted;}
+  .pos-item-sub{display:flex;justify-content:space-between;margin-top:6px;font-size:11.5px;color:var(--muted);}
+  .pos-item-sub span b{color:var(--gray2);font-weight:600;}
 </style>
 </head>
 <body>
@@ -157,6 +164,8 @@
       <button id="menu-btn-lancamentos" onclick="irParaView('lancamentos')">📋 Lançamentos</button>
       <button id="menu-btn-treinos" onclick="irParaView('treinos')">🏋️ Treinos</button>
       <button id="menu-btn-analise" onclick="irParaView('analise')">📈 Análise Treinos</button>
+      <button id="menu-btn-ativos" onclick="irParaView('ativos')">💹 Ativos</button>
+      <button id="menu-btn-posicao" onclick="irParaView('posicao')">📉 Posição</button>
     </nav>
     <p class="menu-hint">Mais abas em breve: gerenciar grupos/subgrupos, reclassificar lançamentos em massa.</p>
   </div>
@@ -442,6 +451,69 @@
     </div>
   </div>
 
+  <div id="view-ativos" class="view">
+    <div class="card">
+      <h1>PittApp</h1>
+      <p class="sub">Lançar movimentação de ativo</p>
+
+      <div class="field">
+        <label>Data</label>
+        <input id="data-ativo" type="date" />
+      </div>
+
+      <div class="field">
+        <label>Tipo</label>
+        <select id="ativo-tipo" onchange="onTipoAtivoChange()">
+          <option value="Compra">Compra</option>
+          <option value="Venda">Venda</option>
+          <option value="Rendimento">Rendimento</option>
+          <option value="Correção">Correção</option>
+          <option value="Taxa">Taxa</option>
+          <option value="Multa">Multa</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Ticker <span id="ativo-ticker-opcional" style="text-transform:none;font-weight:400;">(opcional pra Taxa/Multa gerais)</span></label>
+        <input id="ativo-ticker" type="text" list="ativo-tickers-lista" placeholder="Ex: HGLG11" style="text-transform:uppercase;" />
+        <datalist id="ativo-tickers-lista"></datalist>
+      </div>
+
+      <div class="field">
+        <label>Valor (R$)</label>
+        <input id="ativo-valor" type="text" inputmode="decimal" placeholder="Ex: 162,11" />
+      </div>
+
+      <div class="field" id="ativo-qtd-wrap">
+        <label>Quantidade</label>
+        <input id="ativo-qtd" type="text" inputmode="decimal" placeholder="Ex: 10" />
+      </div>
+
+      <div class="field">
+        <label>Observação (opcional)</label>
+        <input id="obs-ativo" type="text" placeholder="Ex: Aporte mensal" />
+      </div>
+
+      <button class="submit" id="btn-salvar-ativo" onclick="salvarAtivo()">Salvar</button>
+      <div id="msg-ativo"></div>
+    </div>
+  </div>
+
+  <div id="view-posicao" class="view">
+    <div class="card">
+      <h1>PittApp</h1>
+      <p class="sub">Posição em FIIs e Ações</p>
+
+      <div class="destaque-card">
+        <div class="destaque-titulo">Patrimônio em ativos</div>
+        <div class="destaque-total" id="pos-total">...</div>
+      </div>
+
+      <div id="pos-lista"></div>
+      <p class="r-hint">Cotação é manual por enquanto — toca no valor pra atualizar. Investido/Rendimento são acumulados desde o início.</p>
+    </div>
+  </div>
+
   </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -478,6 +550,8 @@ function irParaView(nome){
   document.getElementById('menu-btn-lancamentos').classList.toggle('active', nome === 'lancamentos');
   document.getElementById('menu-btn-treinos').classList.toggle('active', nome === 'treinos');
   document.getElementById('menu-btn-analise').classList.toggle('active', nome === 'analise');
+  document.getElementById('menu-btn-ativos').classList.toggle('active', nome === 'ativos');
+  document.getElementById('menu-btn-posicao').classList.toggle('active', nome === 'posicao');
   if(nome === 'resumo' && !resumoCarregado){
     carregarResumo();
   }
@@ -486,6 +560,9 @@ function irParaView(nome){
   }
   if(nome === 'analise' && !analiseCarregada){
     carregarAnalise();
+  }
+  if(nome === 'posicao'){
+    carregarPosicao();
   }
   fecharMenu();
 }
@@ -1391,6 +1468,9 @@ function entrarNoApp(){
   setDefaultData('data-treino');
   renderTreinoSelects();
   setDefaultAnaliseDatas();
+  setDefaultData('data-ativo');
+  onTipoAtivoChange();
+  carregarTickersConhecidos();
 }
 
 async function esqueciPin(){
@@ -1427,6 +1507,193 @@ async function iniciar(){
   } else {
     irPara('login');
   }
+}
+
+// ---------- Ativos (FIIs e Ações) ----------
+
+function showMsgAtivo(text, type){
+  const m = document.getElementById('msg-ativo');
+  m.textContent = text;
+  m.className = type;
+}
+
+function parseNumBr(raw){
+  if(!raw) return NaN;
+  return parseFloat(String(raw).replace(',', '.'));
+}
+
+async function carregarTickersConhecidos(){
+  const { data, error } = await sb.from('cotacoes_ativos').select('ticker').order('ticker');
+  if(error) return;
+  document.getElementById('ativo-tickers-lista').innerHTML = data.map(r => `<option value="${r.ticker}"></option>`).join('');
+}
+
+function onTipoAtivoChange(){
+  const tipo = document.getElementById('ativo-tipo').value;
+  const precisaQtd = (tipo === 'Compra' || tipo === 'Venda');
+  document.getElementById('ativo-qtd-wrap').style.display = precisaQtd ? 'block' : 'none';
+  document.getElementById('ativo-ticker-opcional').style.display = precisaQtd ? 'none' : 'inline';
+}
+
+async function salvarAtivo(){
+  const btn = document.getElementById('btn-salvar-ativo');
+  const data = document.getElementById('data-ativo').value;
+  const tipo = document.getElementById('ativo-tipo').value;
+  const ticker = document.getElementById('ativo-ticker').value.trim().toUpperCase() || null;
+  const valor = parseNumBr(document.getElementById('ativo-valor').value);
+  const qtdRaw = document.getElementById('ativo-qtd').value;
+  const qtd = qtdRaw ? parseNumBr(qtdRaw) : null;
+  const obs = document.getElementById('obs-ativo').value || null;
+
+  if(!data){
+    showMsgAtivo('Escolhe uma data.', 'err');
+    return;
+  }
+  if(!valor || isNaN(valor) || valor <= 0){
+    showMsgAtivo('Informa um valor válido.', 'err');
+    return;
+  }
+  if((tipo === 'Compra' || tipo === 'Venda') && (!ticker || !qtd || isNaN(qtd) || qtd <= 0)){
+    showMsgAtivo('Compra e Venda precisam de ticker e quantidade.', 'err');
+    return;
+  }
+
+  const agora = new Date();
+  const dataObj = new Date(data + 'T00:00:00');
+  dataObj.setHours(agora.getHours(), agora.getMinutes(), agora.getSeconds());
+
+  btn.disabled = true;
+  showMsgAtivo('Salvando...', '');
+
+  const { error } = await sb.from('ativos_lancamentos').insert([{
+    data_hora: dataObj.toISOString(),
+    tipo: tipo,
+    ticker: ticker,
+    valor: valor,
+    quantidade: (tipo === 'Compra' || tipo === 'Venda') ? qtd : null,
+    observacao: obs
+  }]);
+
+  btn.disabled = false;
+
+  if(error){
+    showMsgAtivo('Erro ao salvar: ' + error.message, 'err');
+  } else {
+    showMsgAtivo('Lançamento salvo!', 'ok');
+    document.getElementById('ativo-ticker').value = '';
+    document.getElementById('ativo-valor').value = '';
+    document.getElementById('ativo-qtd').value = '';
+    document.getElementById('obs-ativo').value = '';
+    setDefaultData('data-ativo');
+    carregarTickersConhecidos();
+  }
+}
+
+async function carregarPosicao(){
+  const listaEl = document.getElementById('pos-lista');
+  const totalEl = document.getElementById('pos-total');
+  listaEl.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:20px 0;">Carregando...</p>';
+  totalEl.textContent = '...';
+
+  let lancs = [];
+  let erro = null;
+  const PAGE = 1000;
+  for(let from = 0; ; from += PAGE){
+    const { data: pagina, error } = await sb.from('ativos_lancamentos').select('tipo, ticker, valor, quantidade').range(from, from + PAGE - 1);
+    if(error){ erro = error; break; }
+    lancs = lancs.concat(pagina);
+    if(pagina.length < PAGE) break;
+  }
+
+  const { data: cotacoes, error: e2 } = await sb.from('cotacoes_ativos').select('ticker, valor, atualizado_em');
+
+  if(erro || e2){
+    listaEl.innerHTML = '<p style="color:var(--red);font-size:13px;">Erro: ' + ((erro && erro.message) || (e2 && e2.message)) + '</p>';
+    totalEl.textContent = 'erro';
+    return;
+  }
+
+  const cotacaoPorTicker = {};
+  cotacoes.forEach(c => { cotacaoPorTicker[c.ticker] = Number(c.valor); });
+
+  const porTicker = {};
+  let custosGerais = 0;
+  lancs.forEach(l => {
+    if(!l.ticker){
+      if(l.tipo === 'Taxa' || l.tipo === 'Multa' || l.tipo === 'Correção') custosGerais += Number(l.valor);
+      return;
+    }
+    if(!porTicker[l.ticker]){
+      porTicker[l.ticker] = { qtdCompra: 0, valorCompra: 0, qtdVenda: 0, rendimento: 0 };
+    }
+    const t = porTicker[l.ticker];
+    if(l.tipo === 'Compra'){
+      t.qtdCompra += Number(l.quantidade || 0);
+      t.valorCompra += Number(l.valor);
+    } else if(l.tipo === 'Correção'){
+      t.valorCompra += Number(l.valor);
+    } else if(l.tipo === 'Venda'){
+      t.qtdVenda += Number(l.quantidade || 0);
+    } else if(l.tipo === 'Rendimento'){
+      t.rendimento += Number(l.valor);
+    }
+  });
+
+  const tickers = Object.keys(porTicker).sort();
+  let patrimonioTotal = 0;
+
+  const linhas = tickers.map(ticker => {
+    const t = porTicker[ticker];
+    const quantidade = t.qtdCompra - t.qtdVenda;
+    const precoMedio = t.qtdCompra > 0 ? t.valorCompra / t.qtdCompra : 0;
+    const investido = quantidade * precoMedio;
+    const cotacaoAtual = cotacaoPorTicker[ticker] || 0;
+    const valorAtual = quantidade * cotacaoAtual;
+    const rentabilidade = investido > 0 ? ((valorAtual - investido) / investido) * 100 : 0;
+    if(quantidade > 0) patrimonioTotal += valorAtual;
+
+    const corRent = rentabilidade < 0 ? 'var(--red)' : 'var(--green)';
+
+    return `
+      <div class="pos-item">
+        <div class="pos-item-top">
+          <span class="pos-ticker">${ticker}</span>
+          <span class="pos-valor-atual" onclick="editarCotacao('${ticker}', ${cotacaoAtual})">R$ ${cotacaoAtual.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+        </div>
+        <div class="pos-item-sub">
+          <span>Qtd <b>${quantidade.toLocaleString('pt-BR')}</b></span>
+          <span>Preço médio <b>R$ ${precoMedio.toLocaleString('pt-BR',{minimumFractionDigits:2})}</b></span>
+        </div>
+        <div class="pos-item-sub">
+          <span>Investido <b>R$ ${investido.toLocaleString('pt-BR',{minimumFractionDigits:2})}</b></span>
+          <span>Valor atual <b>R$ ${valorAtual.toLocaleString('pt-BR',{minimumFractionDigits:2})}</b></span>
+        </div>
+        <div class="pos-item-sub">
+          <span>Rendimento recebido <b>R$ ${t.rendimento.toLocaleString('pt-BR',{minimumFractionDigits:2})}</b></span>
+          <span style="color:${corRent};font-weight:700;">${rentabilidade >= 0 ? '+' : ''}${rentabilidade.toLocaleString('pt-BR',{maximumFractionDigits:1})}%</span>
+        </div>
+      </div>`;
+  }).join('');
+
+  totalEl.textContent = patrimonioTotal.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+  listaEl.innerHTML = linhas || '<p style="color:var(--muted);font-size:13px;text-align:center;padding:20px 0;">Nenhum ativo lançado ainda.</p>';
+  if(custosGerais > 0){
+    listaEl.innerHTML += '<p class="r-hint">Taxas/multas gerais (sem ticker): R$ ' + custosGerais.toLocaleString('pt-BR',{minimumFractionDigits:2}) + '</p>';
+  }
+}
+
+async function editarCotacao(ticker, atual){
+  const novoStr = prompt('Nova cotação de ' + ticker + ' (R$):', String(atual).replace('.', ','));
+  if(novoStr === null) return;
+  const novo = parseNumBr(novoStr);
+  if(isNaN(novo) || novo < 0) return;
+
+  const { error } = await sb.from('cotacoes_ativos').upsert({ ticker: ticker, valor: novo, atualizado_em: new Date().toISOString() });
+  if(error){
+    alert('Erro ao atualizar cotação: ' + error.message);
+    return;
+  }
+  carregarPosicao();
 }
 
 iniciar();
