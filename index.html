@@ -152,11 +152,11 @@
   <div id="menu-drawer" class="menu-drawer">
     <h2 class="menu-title">PittApp</h2>
     <nav class="menu-nav">
-      <button id="menu-btn-lancar" class="active" onclick="irParaView('lancar')">Lançar</button>
-      <button id="menu-btn-resumo" onclick="irParaView('resumo')">Resumo</button>
-      <button id="menu-btn-lancamentos" onclick="irParaView('lancamentos')">Lançamentos</button>
-      <button id="menu-btn-treinos" onclick="irParaView('treinos')">Treinos</button>
-      <button id="menu-btn-analise" onclick="irParaView('analise')">Análise Treinos</button>
+      <button id="menu-btn-lancar" class="active" onclick="irParaView('lancar')">💰 Lançar</button>
+      <button id="menu-btn-resumo" onclick="irParaView('resumo')">📊 Resumo</button>
+      <button id="menu-btn-lancamentos" onclick="irParaView('lancamentos')">📋 Lançamentos</button>
+      <button id="menu-btn-treinos" onclick="irParaView('treinos')">🏋️ Treinos</button>
+      <button id="menu-btn-analise" onclick="irParaView('analise')">📈 Análise Treinos</button>
     </nav>
     <p class="menu-hint">Mais abas em breve: gerenciar grupos/subgrupos, reclassificar lançamentos em massa.</p>
   </div>
@@ -363,6 +363,16 @@
       </div>
 
       <div id="aerobico-wrap" style="display:none;">
+        <div class="field">
+          <label>Tipo</label>
+          <select id="aerobico-tipo">
+            <option value="">Selecionar...</option>
+            <option value="Corrida">Corrida</option>
+            <option value="Caminhada">Caminhada</option>
+            <option value="Esteira">Esteira</option>
+            <option value="Outro">Outro</option>
+          </select>
+        </div>
         <div class="lf-row">
           <div class="field">
             <label>Minutos</label>
@@ -436,6 +446,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2/dist/chartjs-plugin-datalabels.min.js"></script>
 <script>
 const SUPABASE_URL = 'https://siaxiusolkminsprvdmc.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNpYXhpdXNvbGttaW5zcHJ2ZG1jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYzMDY5NjgsImV4cCI6MjEwMTg4Mjk2OH0.7zD0mM5xSjaUXYxGbsWxjerlOjpBXNteZ-IyS3eSIcg';
@@ -1035,11 +1046,16 @@ async function salvarTreino(){
   }
   const distanciaRaw = document.getElementById('aerobico-distancia').value;
   const distanciaKm = aerobico && distanciaRaw ? parseFloat(distanciaRaw.replace(',', '.')) : null;
+  const tipoAerobico = aerobico ? (document.getElementById('aerobico-tipo').value || null) : null;
   const grupos = treinosSelecionados.filter(g => g);
   const obs = document.getElementById('obs-treino').value || null;
 
   if(!aerobico && grupos.length === 0){
     showMsgTreino('Marca aeróbico ou escolhe pelo menos um grupo muscular.', 'err');
+    return;
+  }
+  if(aerobico && !tipoAerobico){
+    showMsgTreino('Escolhe o tipo de aeróbico.', 'err');
     return;
   }
   if(aerobico && (tempoMin || 0) === 0 && (tempoSeg || 0) === 0){
@@ -1060,6 +1076,7 @@ async function salvarTreino(){
     tempo_min: tempoMin,
     tempo_seg: tempoSeg,
     distancia_km: (distanciaKm === null || isNaN(distanciaKm)) ? null : distanciaKm,
+    tipo_aerobico: tipoAerobico,
     grupos_musculares: grupos,
     observacao: obs
   }]);
@@ -1072,6 +1089,7 @@ async function salvarTreino(){
     showMsgTreino('Treino salvo!', 'ok');
     document.getElementById('aerobico-check').checked = false;
     toggleAerobico();
+    document.getElementById('aerobico-tipo').value = '';
     document.getElementById('aerobico-tempo').value = '';
     document.getElementById('aerobico-segundos').value = '';
     document.getElementById('aerobico-distancia').value = '';
@@ -1178,9 +1196,9 @@ async function carregarAnalise(){
   const ctx = document.getElementById('analise-chart').getContext('2d');
   const cores = {
     musculacao: '#E8622C',
-    aerobico: '#5CA86B',
-    futebol: '#4C8DFF',
-    crossfit: '#C5473F'
+    aerobico: '#F2A65A',
+    futebol: '#B5654A',
+    crossfit: '#7A3B4A'
   };
 
   if(analiseChart){
@@ -1210,9 +1228,17 @@ async function carregarAnalise(){
           y: { beginAtZero: true, ticks: { color: '#9A9AA0', precision: 0 }, grid: { color: '#2A2A2E' } }
         },
         plugins: {
-          legend: { labels: { color: '#F2F0EC' } }
+          legend: { labels: { color: '#F2F0EC' } },
+          datalabels: {
+            color: '#F2F0EC',
+            anchor: 'end',
+            align: 'top',
+            font: { size: 9, weight: '600' },
+            formatter: (v) => v > 0 ? v : ''
+          }
         }
-      }
+      },
+      plugins: (typeof ChartDataLabels !== 'undefined') ? [ChartDataLabels] : []
     });
   }
 
@@ -1239,9 +1265,17 @@ async function carregarAnalise(){
           y: { beginAtZero: true, ticks: { color: '#9A9AA0', precision: 0 }, grid: { color: '#2A2A2E' } }
         },
         plugins: {
-          legend: { display: false }
+          legend: { display: false },
+          datalabels: {
+            color: '#F2F0EC',
+            anchor: 'end',
+            align: 'top',
+            font: { size: 10, weight: '600' },
+            formatter: (v) => v > 0 ? v : ''
+          }
         }
-      }
+      },
+      plugins: (typeof ChartDataLabels !== 'undefined') ? [ChartDataLabels] : []
     });
   }
 
