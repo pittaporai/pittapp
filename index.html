@@ -13,13 +13,13 @@
     --orange:#E8622C; --green:#5CA86B; --red:#C5473F; --gray1:#C9C7C2; --gray2:#EDEBE6; --blue:#4C8DFF;
   }
   *{box-sizing:border-box;}
-  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:24px 16px 60px;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:24px 16px 100px;}
   .card{max-width:400px;margin:0 auto;background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:22px;}
   h1{font-size:20px;margin:0 0 4px;}
   .sub{font-size:13px;color:var(--muted);margin:0 0 20px;}
 
-  .tabs{display:flex;gap:4px;background:var(--panel-2);border-radius:10px;padding:4px;margin-bottom:20px;max-width:400px;margin-left:auto;margin-right:auto;}
-  .tabs button{flex:1;border:none;background:transparent;padding:10px;border-radius:7px;font-size:14px;font-weight:600;cursor:pointer;color:var(--muted);}
+  .tabs{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:calc(100% - 32px);max-width:400px;display:flex;gap:4px;background:var(--panel-2);border:1px solid var(--line);border-radius:14px;padding:6px;margin-bottom:calc(14px + env(safe-area-inset-bottom));z-index:30;box-shadow:0 4px 20px rgba(0,0,0,.4);}
+  .tabs button{flex:1;border:none;background:transparent;padding:10px;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;color:var(--muted);}
   .tabs button.active{background:var(--orange);color:#fff;}
   .view{display:none;}
   .view.active{display:block;}
@@ -467,14 +467,13 @@
           <option value="Compra">Compra</option>
           <option value="Venda">Venda</option>
           <option value="Rendimento">Rendimento</option>
-          <option value="Correção">Correção</option>
           <option value="Taxa">Taxa</option>
           <option value="Multa">Multa</option>
         </select>
       </div>
 
-      <div class="field">
-        <label>Ticker <span id="ativo-ticker-opcional" style="text-transform:none;font-weight:400;">(opcional pra Taxa/Multa gerais)</span></label>
+      <div class="field" id="ativo-ticker-wrap">
+        <label>FII ou Ação</label>
         <input id="ativo-ticker" type="text" list="ativo-tickers-lista" placeholder="Ex: HGLG11" style="text-transform:uppercase;" />
         <datalist id="ativo-tickers-lista"></datalist>
       </div>
@@ -505,12 +504,16 @@
       <p class="sub">Posição em FIIs e Ações</p>
 
       <div class="destaque-card">
-        <div class="destaque-titulo">Patrimônio em ativos</div>
+        <div class="destaque-titulo">Patrimônio</div>
         <div class="destaque-total" id="pos-total">...</div>
+        <div class="destaque-sub">
+          <div class="destaque-sub-item"><span class="num" id="pos-total-fiis">R$ 0</span><span class="lbl">Total FIIs</span></div>
+          <div class="destaque-sub-item"><span class="num" id="pos-total-acoes">R$ 0</span><span class="lbl">Total Ações</span></div>
+        </div>
       </div>
 
       <div id="pos-lista"></div>
-      <p class="r-hint">Cotação é manual por enquanto — toca no valor pra atualizar. Investido/Rendimento são acumulados desde o início.</p>
+      <p class="r-hint">Cotação é manual por enquanto — toca no valor de um ativo pra atualizar. Investido/Rendimento são acumulados desde o início. Toca no nome do grupo pra abrir os ativos.</p>
     </div>
   </div>
 
@@ -1531,14 +1534,18 @@ async function carregarTickersConhecidos(){
 function onTipoAtivoChange(){
   const tipo = document.getElementById('ativo-tipo').value;
   const precisaQtd = (tipo === 'Compra' || tipo === 'Venda');
+  const precisaTicker = (tipo === 'Compra' || tipo === 'Venda' || tipo === 'Rendimento');
   document.getElementById('ativo-qtd-wrap').style.display = precisaQtd ? 'block' : 'none';
-  document.getElementById('ativo-ticker-opcional').style.display = precisaQtd ? 'none' : 'inline';
+  document.getElementById('ativo-ticker-wrap').style.display = precisaTicker ? 'block' : 'none';
+  if(!precisaTicker) document.getElementById('ativo-ticker').value = '';
 }
 
 async function salvarAtivo(){
   const btn = document.getElementById('btn-salvar-ativo');
   const data = document.getElementById('data-ativo').value;
   const tipo = document.getElementById('ativo-tipo').value;
+  const precisaTicker = (tipo === 'Compra' || tipo === 'Venda' || tipo === 'Rendimento');
+  const precisaQtd = (tipo === 'Compra' || tipo === 'Venda');
   const ticker = document.getElementById('ativo-ticker').value.trim().toUpperCase() || null;
   const valor = parseNumBr(document.getElementById('ativo-valor').value);
   const qtdRaw = document.getElementById('ativo-qtd').value;
@@ -1553,8 +1560,12 @@ async function salvarAtivo(){
     showMsgAtivo('Informa um valor válido.', 'err');
     return;
   }
-  if((tipo === 'Compra' || tipo === 'Venda') && (!ticker || !qtd || isNaN(qtd) || qtd <= 0)){
-    showMsgAtivo('Compra e Venda precisam de ticker e quantidade.', 'err');
+  if(precisaTicker && !ticker){
+    showMsgAtivo('Informa o FII ou Ação.', 'err');
+    return;
+  }
+  if(precisaQtd && (!qtd || isNaN(qtd) || qtd <= 0)){
+    showMsgAtivo('Compra e Venda precisam de quantidade.', 'err');
     return;
   }
 
@@ -1568,9 +1579,9 @@ async function salvarAtivo(){
   const { error } = await sb.from('ativos_lancamentos').insert([{
     data_hora: dataObj.toISOString(),
     tipo: tipo,
-    ticker: ticker,
+    ticker: precisaTicker ? ticker : null,
     valor: valor,
-    quantidade: (tipo === 'Compra' || tipo === 'Venda') ? qtd : null,
+    quantidade: precisaQtd ? qtd : null,
     observacao: obs
   }]);
 
@@ -1587,6 +1598,18 @@ async function salvarAtivo(){
     setDefaultData('data-ativo');
     carregarTickersConhecidos();
   }
+}
+
+function ehFii(ticker){
+  return ticker.endsWith('11');
+}
+
+function fmtR$(v){
+  return v.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+}
+
+function togglePosGrupo(nome){
+  document.getElementById('posgrupo-' + nome).classList.toggle('aberto');
 }
 
 async function carregarPosicao(){
@@ -1620,7 +1643,7 @@ async function carregarPosicao(){
   let custosGerais = 0;
   lancs.forEach(l => {
     if(!l.ticker){
-      if(l.tipo === 'Taxa' || l.tipo === 'Multa' || l.tipo === 'Correção') custosGerais += Number(l.valor);
+      if(l.tipo === 'Taxa' || l.tipo === 'Multa') custosGerais += Number(l.valor);
       return;
     }
     if(!porTicker[l.ticker]){
@@ -1630,8 +1653,6 @@ async function carregarPosicao(){
     if(l.tipo === 'Compra'){
       t.qtdCompra += Number(l.quantidade || 0);
       t.valorCompra += Number(l.valor);
-    } else if(l.tipo === 'Correção'){
-      t.valorCompra += Number(l.valor);
     } else if(l.tipo === 'Venda'){
       t.qtdVenda += Number(l.quantidade || 0);
     } else if(l.tipo === 'Rendimento'){
@@ -1640,9 +1661,8 @@ async function carregarPosicao(){
   });
 
   const tickers = Object.keys(porTicker).sort();
-  let patrimonioTotal = 0;
 
-  const linhas = tickers.map(ticker => {
+  function montaPosicao(ticker){
     const t = porTicker[ticker];
     const quantidade = t.qtdCompra - t.qtdVenda;
     const precoMedio = t.qtdCompra > 0 ? t.valorCompra / t.qtdCompra : 0;
@@ -1650,33 +1670,62 @@ async function carregarPosicao(){
     const cotacaoAtual = cotacaoPorTicker[ticker] || 0;
     const valorAtual = quantidade * cotacaoAtual;
     const rentabilidade = investido > 0 ? ((valorAtual - investido) / investido) * 100 : 0;
-    if(quantidade > 0) patrimonioTotal += valorAtual;
+    return { ticker, quantidade, precoMedio, investido, cotacaoAtual, valorAtual, rentabilidade, rendimento: t.rendimento };
+  }
 
-    const corRent = rentabilidade < 0 ? 'var(--red)' : 'var(--green)';
+  const posicoes = tickers.map(montaPosicao);
+  const fiis = posicoes.filter(p => ehFii(p.ticker));
+  const acoes = posicoes.filter(p => !ehFii(p.ticker));
 
+  const totalFiis = fiis.reduce((s, p) => s + (p.quantidade > 0 ? p.valorAtual : 0), 0);
+  const totalAcoes = acoes.reduce((s, p) => s + (p.quantidade > 0 ? p.valorAtual : 0), 0);
+  const patrimonioTotal = totalFiis + totalAcoes;
+
+  function renderItem(p){
+    const corRent = p.rentabilidade < 0 ? 'var(--red)' : 'var(--green)';
     return `
       <div class="pos-item">
         <div class="pos-item-top">
-          <span class="pos-ticker">${ticker}</span>
-          <span class="pos-valor-atual" onclick="editarCotacao('${ticker}', ${cotacaoAtual})">R$ ${cotacaoAtual.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+          <span class="pos-ticker">${p.ticker}</span>
+          <span class="pos-valor-atual" onclick="editarCotacao('${p.ticker}', ${p.cotacaoAtual})">R$ ${p.cotacaoAtual.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
         </div>
         <div class="pos-item-sub">
-          <span>Qtd <b>${quantidade.toLocaleString('pt-BR')}</b></span>
-          <span>Preço médio <b>R$ ${precoMedio.toLocaleString('pt-BR',{minimumFractionDigits:2})}</b></span>
+          <span># <b>${p.quantidade.toLocaleString('pt-BR')}</b></span>
+          <span>Preço médio <b>R$ ${p.precoMedio.toLocaleString('pt-BR',{minimumFractionDigits:2})}</b></span>
         </div>
         <div class="pos-item-sub">
-          <span>Investido <b>R$ ${investido.toLocaleString('pt-BR',{minimumFractionDigits:2})}</b></span>
-          <span>Valor atual <b>R$ ${valorAtual.toLocaleString('pt-BR',{minimumFractionDigits:2})}</b></span>
+          <span>Investido <b>R$ ${p.investido.toLocaleString('pt-BR',{minimumFractionDigits:2})}</b></span>
+          <span>Valor atual <b>R$ ${p.valorAtual.toLocaleString('pt-BR',{minimumFractionDigits:2})}</b></span>
         </div>
         <div class="pos-item-sub">
-          <span>Rendimento recebido <b>R$ ${t.rendimento.toLocaleString('pt-BR',{minimumFractionDigits:2})}</b></span>
-          <span style="color:${corRent};font-weight:700;">${rentabilidade >= 0 ? '+' : ''}${rentabilidade.toLocaleString('pt-BR',{maximumFractionDigits:1})}%</span>
+          <span>Rendimento recebido <b>R$ ${p.rendimento.toLocaleString('pt-BR',{minimumFractionDigits:2})}</b></span>
+          <span style="color:${corRent};font-weight:700;">${p.rentabilidade >= 0 ? '+' : ''}${p.rentabilidade.toLocaleString('pt-BR',{maximumFractionDigits:1})}%</span>
         </div>
       </div>`;
-  }).join('');
+  }
 
-  totalEl.textContent = patrimonioTotal.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
-  listaEl.innerHTML = linhas || '<p style="color:var(--muted);font-size:13px;text-align:center;padding:20px 0;">Nenhum ativo lançado ainda.</p>';
+  function renderGrupo(id, nome, lista, totalGrupo){
+    if(lista.length === 0) return '';
+    const itens = lista.map(renderItem).join('');
+    return `
+      <div class="grupo" id="posgrupo-${id}">
+        <div class="grupo-head" onclick="togglePosGrupo('${id}')">
+          <span class="grupo-nome">${nome}</span>
+          <span style="display:flex;align-items:center;">
+            <span class="grupo-valor">${fmtR$(totalGrupo)}</span>
+            <span class="chev">›</span>
+          </span>
+        </div>
+        <div class="grupo-sub">${itens}</div>
+      </div>`;
+  }
+
+  totalEl.textContent = fmtR$(patrimonioTotal);
+  document.getElementById('pos-total-fiis').textContent = fmtR$(totalFiis);
+  document.getElementById('pos-total-acoes').textContent = fmtR$(totalAcoes);
+
+  const gruposHtml = renderGrupo('fiis', 'FIIs', fiis, totalFiis) + renderGrupo('acoes', 'Ações', acoes, totalAcoes);
+  listaEl.innerHTML = gruposHtml || '<p style="color:var(--muted);font-size:13px;text-align:center;padding:20px 0;">Nenhum ativo lançado ainda.</p>';
   if(custosGerais > 0){
     listaEl.innerHTML += '<p class="r-hint">Taxas/multas gerais (sem ticker): R$ ' + custosGerais.toLocaleString('pt-BR',{minimumFractionDigits:2}) + '</p>';
   }
