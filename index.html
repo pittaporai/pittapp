@@ -106,6 +106,10 @@
   .pos-valor-atual{font-weight:700;font-size:14px;cursor:pointer;text-decoration:underline dotted;}
   .pos-item-sub{display:flex;justify-content:space-between;margin-top:6px;font-size:11.5px;color:var(--muted);}
   .pos-item-sub span b{color:var(--gray2);font-weight:600;}
+
+  .ticker-item{display:flex;justify-content:space-between;align-items:center;padding:10px 2px;border-bottom:1px solid var(--line);font-size:13.5px;}
+  .ticker-item:last-child{border-bottom:none;}
+  .ticker-item .del{color:var(--red);background:none;border:none;font-size:13px;cursor:pointer;padding:4px 8px;}
 </style>
 </head>
 <body>
@@ -159,15 +163,16 @@
   <div id="menu-drawer" class="menu-drawer">
     <h2 class="menu-title">PittApp</h2>
     <nav class="menu-nav">
-      <button id="menu-btn-lancar" class="active" onclick="irParaView('lancar')">💰 Lançar</button>
-      <button id="menu-btn-resumo" onclick="irParaView('resumo')">📊 Resumo</button>
-      <button id="menu-btn-lancamentos" onclick="irParaView('lancamentos')">📋 Lançamentos</button>
-      <button id="menu-btn-treinos" onclick="irParaView('treinos')">🏋️ Treinos</button>
-      <button id="menu-btn-analise" onclick="irParaView('analise')">📈 Análise Treinos</button>
-      <button id="menu-btn-ativos" onclick="irParaView('ativos')">💹 Ativos</button>
-      <button id="menu-btn-posicao" onclick="irParaView('posicao')">📉 Posição</button>
+      <button id="menu-btn-lancar" class="active" onclick="irParaView('lancar')">💵 Lançar</button>
+      <button id="menu-btn-resumo" onclick="irParaView('resumo')">💵 Resumo</button>
+      <button id="menu-btn-lancamentos" onclick="irParaView('lancamentos')">💵 Lançamentos</button>
+      <button id="menu-btn-treinos" onclick="irParaView('treinos')">💪 Treinos</button>
+      <button id="menu-btn-analise" onclick="irParaView('analise')">💪 Análise Treinos</button>
+      <button id="menu-btn-ativos" onclick="irParaView('ativos')">📈 Ativos</button>
+      <button id="menu-btn-posicao" onclick="irParaView('posicao')">📈 Posição</button>
+      <button id="menu-btn-ajustes" onclick="irParaView('ajustes')">⚙️ Ajustes</button>
     </nav>
-    <p class="menu-hint">Mais abas em breve: gerenciar grupos/subgrupos, reclassificar lançamentos em massa.</p>
+    <p class="menu-hint">Mais ajustes em breve: gerenciar grupos/subgrupos, reclassificar lançamentos em massa.</p>
   </div>
 
   <div class="top-bar">
@@ -517,6 +522,30 @@
     </div>
   </div>
 
+  <div id="view-ajustes" class="view">
+    <div class="card">
+      <h1>PittApp</h1>
+      <p class="sub">Ajustes</p>
+
+      <p class="subhead-mini">FIIs e Ações cadastrados</p>
+      <div id="ajustes-tickers-lista"></div>
+
+      <p class="subhead-mini">Cadastrar novo</p>
+      <div class="lf-row">
+        <div class="field">
+          <label>Ticker</label>
+          <input id="novo-ticker-codigo" type="text" placeholder="Ex: VALE3" style="text-transform:uppercase;" />
+        </div>
+        <div class="field">
+          <label>Cotação inicial (R$)</label>
+          <input id="novo-ticker-cotacao" type="text" inputmode="decimal" placeholder="Ex: 65,40" />
+        </div>
+      </div>
+      <button class="submit" onclick="cadastrarTicker()">Cadastrar</button>
+      <div id="msg-ajustes"></div>
+    </div>
+  </div>
+
   </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -555,6 +584,7 @@ function irParaView(nome){
   document.getElementById('menu-btn-analise').classList.toggle('active', nome === 'analise');
   document.getElementById('menu-btn-ativos').classList.toggle('active', nome === 'ativos');
   document.getElementById('menu-btn-posicao').classList.toggle('active', nome === 'posicao');
+  document.getElementById('menu-btn-ajustes').classList.toggle('active', nome === 'ajustes');
   if(nome === 'resumo' && !resumoCarregado){
     carregarResumo();
   }
@@ -566,6 +596,9 @@ function irParaView(nome){
   }
   if(nome === 'posicao'){
     carregarPosicao();
+  }
+  if(nome === 'ajustes'){
+    carregarAjustesTickers();
   }
   fecharMenu();
 }
@@ -1743,6 +1776,85 @@ async function editarCotacao(ticker, atual){
     return;
   }
   carregarPosicao();
+}
+
+// ---------- Ajustes: cadastro de tickers ----------
+
+function showMsgAjustes(text, type){
+  const m = document.getElementById('msg-ajustes');
+  m.textContent = text;
+  m.className = type;
+}
+
+async function carregarAjustesTickers(){
+  const listaEl = document.getElementById('ajustes-tickers-lista');
+  listaEl.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:12px 0;">Carregando...</p>';
+
+  const { data, error } = await sb.from('cotacoes_ativos').select('ticker').order('ticker');
+  if(error){
+    listaEl.innerHTML = '<p style="color:var(--red);font-size:13px;">Erro: ' + error.message + '</p>';
+    return;
+  }
+
+  if(data.length === 0){
+    listaEl.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:12px 0;">Nenhum cadastrado ainda.</p>';
+    return;
+  }
+
+  listaEl.innerHTML = data.map(r => `
+    <div class="ticker-item">
+      <span>${r.ticker}</span>
+      <button class="del" onclick="excluirTicker('${r.ticker}')">Excluir</button>
+    </div>`).join('');
+}
+
+async function cadastrarTicker(){
+  const codigo = document.getElementById('novo-ticker-codigo').value.trim().toUpperCase();
+  const cotacaoRaw = document.getElementById('novo-ticker-cotacao').value;
+  const cotacao = cotacaoRaw ? parseNumBr(cotacaoRaw) : 0;
+
+  if(!codigo){
+    showMsgAjustes('Informa o código do ticker.', 'err');
+    return;
+  }
+  if(isNaN(cotacao) || cotacao < 0){
+    showMsgAjustes('Cotação inválida.', 'err');
+    return;
+  }
+
+  const { error } = await sb.from('cotacoes_ativos').insert([{ ticker: codigo, valor: cotacao }]);
+
+  if(error){
+    showMsgAjustes(error.code === '23505' ? 'Esse ticker já existe.' : ('Erro: ' + error.message), 'err');
+  } else {
+    showMsgAjustes('Ticker cadastrado!', 'ok');
+    document.getElementById('novo-ticker-codigo').value = '';
+    document.getElementById('novo-ticker-cotacao').value = '';
+    carregarAjustesTickers();
+    carregarTickersConhecidos();
+  }
+}
+
+async function excluirTicker(ticker){
+  const { count, error: e1 } = await sb.from('ativos_lancamentos').select('id', { count: 'exact', head: true }).eq('ticker', ticker);
+  if(e1){
+    showMsgAjustes('Erro ao verificar: ' + e1.message, 'err');
+    return;
+  }
+  if(count > 0){
+    showMsgAjustes(ticker + ' tem ' + count + ' lançamento(s) vinculado(s) — não dá pra excluir.', 'err');
+    return;
+  }
+  if(!confirm('Excluir ' + ticker + '?')) return;
+
+  const { error } = await sb.from('cotacoes_ativos').delete().eq('ticker', ticker);
+  if(error){
+    showMsgAjustes('Erro ao excluir: ' + error.message, 'err');
+    return;
+  }
+  showMsgAjustes(ticker + ' excluído.', 'ok');
+  carregarAjustesTickers();
+  carregarTickersConhecidos();
 }
 
 iniciar();
