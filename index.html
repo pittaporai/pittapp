@@ -41,15 +41,27 @@
 
   .r-title{font-size:20px;color:var(--gray1);margin:0 0 18px;text-align:center;}
   .r-total{text-align:center;margin-bottom:22px;font-size:34px;font-weight:600;}
+
+  /* Nível 1 — grupos grandes (Caixa líquido, Investimentos): clicável, expande/recolhe */
   .grupo{background:var(--panel-2);border-radius:12px;margin-bottom:10px;overflow:hidden;}
-  .grupo-head{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;cursor:pointer;}
-  .grupo-nome{font-size:15px;color:var(--gray1);font-weight:500;}
-  .grupo-valor{font-size:15px;font-weight:700;}
-  .chev{color:var(--muted);font-size:12px;transition:transform .15s;margin-left:8px;}
+  .grupo-head{display:flex;justify-content:space-between;align-items:center;padding:16px 18px;cursor:pointer;}
+  .grupo-nome{font-size:16px;color:var(--gray2);font-weight:700;letter-spacing:.01em;}
+  .grupo-valor{font-size:17px;font-weight:700;}
+  .chev{color:var(--orange);font-size:13px;transition:transform .15s;margin-left:10px;}
   .grupo.aberto .chev{transform:rotate(90deg);}
-  .grupo-sub{display:none;padding:0 16px 12px;border-top:1px solid var(--line);}
+  .grupo-sub{display:none;padding:6px 14px 12px;border-top:1px solid var(--line);}
   .grupo.aberto .grupo-sub{display:block;}
-  .sub-linha{display:flex;justify-content:space-between;padding:9px 4px;font-size:13.5px;color:var(--gray2);}
+
+  /* Nível 2 — subtotal por moeda (só aparece quando o grupo tem mais de uma moeda): banda com fundo, não clicável */
+  .moeda-grupo{background:rgba(232,98,44,0.08);border-radius:8px;margin-top:8px;overflow:hidden;}
+  .moeda-total-linha{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--orange);cursor:default;}
+  .moeda-total-linha span:last-child{font-size:13.5px;font-weight:700;text-transform:none;letter-spacing:0;color:var(--gray1);}
+  .moeda-grupo .sub-linha{padding:7px 12px 7px 20px;}
+
+  /* Nível 3 — cada conta individual: texto pequeno e discreto, sem interação */
+  .sub-linha{display:flex;justify-content:space-between;padding:8px 4px;font-size:13px;color:var(--gray2);cursor:default;}
+  .sub-linha:not(:last-child){border-bottom:1px solid rgba(255,255,255,.05);}
+
   .r-hint{font-size:11px;color:#5f5e5a;margin-top:16px;text-align:center;}
 
   .screen{display:none;}
@@ -390,6 +402,8 @@
           <label>Moeda de entrada</label>
           <select id="moeda-entrada"></select>
         </div>
+
+        <p class="r-hint" style="margin-top:0;">Câmbio: pra converter moeda dentro da mesma conta (ex: Wise em USD virando CLP), escolhe a mesma conta nos dois lados e moedas diferentes.</p>
       </div>
 
       <div class="field">
@@ -996,8 +1010,8 @@ async function salvarEntreContas(){
     showMsg('Preenche as duas contas e a data.', 'err');
     return;
   }
-  if(contaSaidaId === contaEntradaId){
-    showMsg('Conta de saída e de entrada precisam ser diferentes.', 'err');
+  if(contaSaidaId === contaEntradaId && moedaSaida === moedaEntrada){
+    showMsg('Mesma conta e mesma moeda não tem o que transferir — muda a conta, ou a moeda se for um câmbio.', 'err');
     return;
   }
 
@@ -1048,29 +1062,48 @@ function tagMoeda(moeda){
   return `<span class="moeda-tag moeda-outra">${moeda}</span>`;
 }
 
-// Busca a cotação USD->BRL do dia numa API pública (sem chave, sem custo).
+// Busca a cotação de cada moeda (de MOEDAS) pra BRL, numa API pública sem chave.
+// Usa open.er-api.com (base USD) em vez do frankfurter.app porque o frankfurter
+// só cobre moedas de referência do BCE e não tem CLP nem ARS — essencial agora
+// que Wise/BTG Internacional podem ter saldo em CLP além de USD.
 // Se a busca falhar (sem internet, API fora do ar, etc.), cai pro último valor
-// salvo na tabela config — e se nem isso existir, usa 1:1 como último recurso.
-async function buscarCotacaoUsd(){
+// salvo na tabela config pra cada moeda — e se nem isso existir, usa 1:1.
+async function buscarCotacoes(){
+  const resultado = {};
   try{
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 4000);
-    const resp = await fetch('https://api.frankfurter.app/latest?from=USD&to=BRL', { signal: controller.signal });
+    const resp = await fetch('https://open.er-api.com/v6/latest/USD', { signal: controller.signal });
     clearTimeout(timeout);
     const json = await resp.json();
-    const cotacao = json && json.rates && json.rates.BRL;
-    if(cotacao && !isNaN(cotacao)){
-      // guarda o valor buscado como cache, pra servir de fallback na próxima vez
-      sb.from('config').update({ valor: String(cotacao), atualizado_em: new Date().toISOString() }).eq('chave', 'cotacao_usd_brl').then(() => {});
-      return cotacao;
+    const ratesUsd = json && json.rates;
+    if(ratesUsd && ratesUsd.BRL){
+      MOEDAS.forEach(m => {
+        if(ratesUsd[m]){
+          const taxa = ratesUsd.BRL / ratesUsd[m];
+          resultado[m] = taxa;
+          const chave = 'cotacao_' + m.toLowerCase() + '_brl';
+          sb.from('config').update({ valor: String(taxa), atualizado_em: new Date().toISOString() }).eq('chave', chave).then(() => {});
+        }
+      });
     }
   } catch(e){
-    console.warn('Não deu pra buscar cotação USD/BRL ao vivo, usando fallback salvo:', e.message);
+    console.warn('Não deu pra buscar cotações ao vivo, usando fallback salvo:', e.message);
   }
 
-  const { data: cfg, error: e3 } = await sb.from('config').select('valor').eq('chave', 'cotacao_usd_brl').maybeSingle();
-  if(e3) console.error('Erro ao buscar cotação USD/BRL salva, usando 1:1 como último fallback:', e3.message);
-  return (cfg && !isNaN(parseFloat(cfg.valor))) ? parseFloat(cfg.valor) : 1;
+  const faltando = MOEDAS.filter(m => resultado[m] === undefined);
+  if(faltando.length){
+    const chaves = faltando.map(m => 'cotacao_' + m.toLowerCase() + '_brl');
+    const { data: cfgs, error: e3 } = await sb.from('config').select('chave, valor').in('chave', chaves);
+    if(e3) console.error('Erro ao buscar cotações salvas, usando 1:1 como último fallback:', e3.message);
+    faltando.forEach(m => {
+      const chave = 'cotacao_' + m.toLowerCase() + '_brl';
+      const row = cfgs && cfgs.find(c => c.chave === chave);
+      resultado[m] = (row && !isNaN(parseFloat(row.valor))) ? parseFloat(row.valor) : 1;
+    });
+  }
+  resultado.BRL = 1;
+  return resultado;
 }
 
 async function carregarResumo(){
@@ -1080,7 +1113,7 @@ async function carregarResumo(){
   gruposEl.innerHTML = '';
 
   const { data: contas, error: e1 } = await sb.from('contas').select('id, nome, ordem, grupo_resumo').eq('ativa', true).not('grupo_resumo', 'is', null).order('ordem');
-  const cotacaoUsd = await buscarCotacaoUsd();
+  const cotacoes = await buscarCotacoes();
 
   // O Supabase limita cada consulta a 1000 linhas por padrão — com o histórico
   // completo migrado (5800+ lançamentos), é preciso buscar em páginas até
@@ -1101,58 +1134,97 @@ async function carregarResumo(){
     return;
   }
 
-  const saldoPorConta = {};
-  const moedaPorConta = {};
-  contas.forEach(c => { saldoPorConta[c.id] = 0; moedaPorConta[c.id] = 'BRL'; });
+  // Saldo por conta, separado por moeda — uma conta pode ter mais de uma moeda
+  // (ex: Wise em USD e, depois de um câmbio, também em CLP).
+  const saldoPorContaMoeda = {};
+  contas.forEach(c => { saldoPorContaMoeda[c.id] = {}; });
   lancs.forEach(l => {
-    if(!(l.conta_id in saldoPorConta)) return;
-    saldoPorConta[l.conta_id] += (l.fluxo === 'entrada' ? 1 : -1) * Number(l.valor);
-    if(l.moeda && l.moeda !== 'BRL') moedaPorConta[l.conta_id] = l.moeda;
+    if(!(l.conta_id in saldoPorContaMoeda)) return;
+    const moeda = l.moeda || 'BRL';
+    const mapa = saldoPorContaMoeda[l.conta_id];
+    mapa[moeda] = (mapa[moeda] || 0) + (l.fluxo === 'entrada' ? 1 : -1) * Number(l.valor);
   });
 
-  function saldoBRL(contaId){
-    const moeda = moedaPorConta[contaId];
-    const saldo = saldoPorConta[contaId];
-    return moeda === 'USD' ? saldo * cotacaoUsd : saldo;
+  function taxaBRL(moeda){
+    return cotacoes[moeda] != null ? cotacoes[moeda] : 1;
   }
 
+  // Monta os itens de cada grupo_resumo: um item por (conta, moeda) — uma conta
+  // com duas moedas vira dois itens.
   const gruposMap = {};
   const ordemGrupo = [];
   contas.forEach(c => {
-    if(!gruposMap[c.grupo_resumo]){
-      gruposMap[c.grupo_resumo] = [];
-      ordemGrupo.push(c.grupo_resumo);
+    const nomeGrupo = c.grupo_resumo;
+    if(!gruposMap[nomeGrupo]){
+      gruposMap[nomeGrupo] = [];
+      ordemGrupo.push(nomeGrupo);
     }
-    gruposMap[c.grupo_resumo].push({ nome: c.nome, saldo: saldoPorConta[c.id], moeda: moedaPorConta[c.id], saldoBRL: saldoBRL(c.id) });
+    const mapaMoedas = saldoPorContaMoeda[c.id];
+    const moedas = Object.keys(mapaMoedas);
+    if(moedas.length === 0){
+      gruposMap[nomeGrupo].push({ conta: c.nome, moeda: 'BRL', saldo: 0 });
+    } else {
+      moedas.forEach(m => gruposMap[nomeGrupo].push({ conta: c.nome, moeda: m, saldo: mapaMoedas[m] }));
+    }
   });
 
   let totalGeral = 0;
-  contas.forEach(c => totalGeral += saldoBRL(c.id));
+  Object.values(gruposMap).forEach(itens => {
+    itens.forEach(it => { totalGeral += it.saldo * taxaBRL(it.moeda); });
+  });
   totalEl.textContent = fmt(totalGeral);
   totalEl.style.color = 'var(--orange)';
 
   gruposEl.innerHTML = ordemGrupo.map((nomeGrupo, i) => {
     const itens = gruposMap[nomeGrupo];
-    const sub = itens.reduce((s, c) => s + c.saldoBRL, 0);
-    const subCor = sub < 0 ? 'var(--red)' : 'var(--gray1)';
-    const linhas = itens.map(c => {
-      const cor = c.saldo < 0 ? 'var(--red)' : 'var(--gray2)';
-      return `<div class="sub-linha" style="color:${cor};"><span>${c.nome} ${tagMoeda(c.moeda)}</span><span style="font-weight:500;">${fmt(c.saldo)}</span></div>`;
+    const totalGrupoBRL = itens.reduce((s, it) => s + it.saldo * taxaBRL(it.moeda), 0);
+    const corGrupo = totalGrupoBRL < 0 ? 'var(--red)' : 'var(--gray1)';
+
+    // Agrupa por moeda dentro do grupo — só vira banda de "Total <moeda>"
+    // quando o grupo de fato tem mais de uma moeda em uso.
+    const porMoeda = {};
+    const ordemMoedas = [];
+    itens.forEach(it => {
+      if(!porMoeda[it.moeda]){ porMoeda[it.moeda] = []; ordemMoedas.push(it.moeda); }
+      porMoeda[it.moeda].push(it);
+    });
+    const multiMoeda = ordemMoedas.length > 1;
+
+    const corpoHtml = ordemMoedas.map(moeda => {
+      const contasDaMoeda = porMoeda[moeda];
+      const linhas = contasDaMoeda.map(it => {
+        const cor = it.saldo < 0 ? 'var(--red)' : 'var(--gray2)';
+        const tag = (!multiMoeda && it.moeda !== 'BRL') ? ' ' + tagMoeda(it.moeda) : '';
+        return `<div class="sub-linha"><span>${it.conta}${tag}</span><span style="color:${cor};font-weight:500;">${fmt(it.saldo)}</span></div>`;
+      }).join('');
+
+      if(!multiMoeda) return linhas;
+
+      const totalMoeda = contasDaMoeda.reduce((s, it) => s + it.saldo, 0);
+      return `
+        <div class="moeda-grupo">
+          <div class="moeda-total-linha">
+            <span>Total ${moeda}</span>
+            <span>${fmt(totalMoeda)}</span>
+          </div>
+          ${linhas}
+        </div>`;
     }).join('');
+
     return `
       <div class="grupo" id="grupo${i}">
         <div class="grupo-head" onclick="toggleGrupo(${i})">
           <span class="grupo-nome">${nomeGrupo}</span>
           <span style="display:flex;align-items:center;">
-            <span class="grupo-valor" style="color:${subCor};">${fmt(sub)}</span>
+            <span class="grupo-valor" style="color:${corGrupo};">${fmt(totalGrupoBRL)}</span>
             <span class="chev">›</span>
           </span>
         </div>
-        <div class="grupo-sub">${linhas}</div>
+        <div class="grupo-sub">${corpoHtml}</div>
       </div>`;
   }).join('');
 
-  gruposEl.innerHTML += '<p class="r-hint">Valores em moeda diferente de BRL são convertidos pra cotação de R$ ' + cotacaoUsd.toLocaleString('pt-BR',{minimumFractionDigits:2}) + ' no total, mas exibidos na moeda original em cada conta.</p>';
+  gruposEl.innerHTML += '<p class="r-hint">O total de cada grupo converte tudo pra R$ na cotação do dia. Quando um grupo tem mais de uma moeda, aparece um subtotal por moeda — dentro dele, cada conta é exibida na moeda original.</p>';
 
   resumoCarregado = true;
 }
