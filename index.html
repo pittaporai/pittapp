@@ -13,14 +13,11 @@
     --orange:#E8622C; --green:#5CA86B; --red:#C5473F; --gray1:#C9C7C2; --gray2:#EDEBE6; --blue:#4C8DFF;
   }
   *{box-sizing:border-box;}
-  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:24px 16px 100px;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:24px 16px calc(24px + env(safe-area-inset-bottom));}
   .card{max-width:400px;margin:0 auto;background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:22px;}
   h1{font-size:20px;margin:0 0 4px;}
   .sub{font-size:13px;color:var(--muted);margin:0 0 20px;}
 
-  .tabs{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:calc(100% - 32px);max-width:400px;display:flex;gap:4px;background:var(--panel-2);border:1px solid var(--line);border-radius:14px;padding:6px;margin-bottom:calc(14px + env(safe-area-inset-bottom));z-index:30;box-shadow:0 4px 20px rgba(0,0,0,.4);}
-  .tabs button{flex:1;border:none;background:transparent;padding:10px;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;color:var(--muted);}
-  .tabs button.active{background:var(--orange);color:#fff;}
   .view{display:none;}
   .view.active{display:block;}
 
@@ -179,6 +176,7 @@
       <button id="menu-btn-analise" onclick="irParaView('analise')">💪 Análise Treinos</button>
       <button id="menu-btn-ativos" onclick="irParaView('ativos')">📈 Ativos</button>
       <button id="menu-btn-posicao" onclick="irParaView('posicao')">📈 Posição</button>
+      <button id="menu-btn-historico" onclick="irParaView('historico')">📈 Histórico</button>
       <button id="menu-btn-ajustes" onclick="irParaView('ajustes')">⚙️ Ajustes</button>
     </nav>
     <p class="menu-hint">Mais ajustes em breve: gerenciar grupos/subgrupos, reclassificar lançamentos em massa.</p>
@@ -226,9 +224,9 @@
       <div class="field">
         <label>Categoria</label>
         <select id="dt-dono">
-          <option value="Matheus">Matheus</option>
-          <option value="Casa">Casa</option>
-          <option value="Michelle">Michelle</option>
+          <option value="Matheus">👽 Matheus</option>
+          <option value="Casa">🏠 Casa</option>
+          <option value="Michelle">🙍🏻‍♀️ Michelle</option>
         </select>
       </div>
 
@@ -249,14 +247,59 @@
     </div>
   </div>
 
+  <div id="detalhe-ativo-overlay" class="detalhe-overlay" onclick="fecharDetalheAtivo()"></div>
+  <div id="detalhe-ativo-sheet" class="detalhe-sheet">
+    <div class="card">
+      <h1>Editar lançamento</h1>
+      <p class="sub">FII ou Ação — altere os campos e salve, ou exclua.</p>
+
+      <div class="field">
+        <label>Data</label>
+        <input id="da-data" type="date" />
+      </div>
+
+      <div class="field">
+        <label>Tipo</label>
+        <select id="da-tipo" onchange="onDaTipoChange()">
+          <option value="Compra">Compra</option>
+          <option value="Venda">Venda</option>
+          <option value="Rendimento">Rendimento</option>
+          <option value="Taxa">Taxa</option>
+          <option value="Multa">Multa</option>
+        </select>
+      </div>
+
+      <div class="field" id="da-ticker-wrap">
+        <label>FII ou Ação</label>
+        <input id="da-ticker" type="text" list="ativo-tickers-lista" style="text-transform:uppercase;" />
+      </div>
+
+      <div class="field">
+        <label>Valor (R$)</label>
+        <input id="da-valor" type="text" inputmode="decimal" />
+      </div>
+
+      <div class="field" id="da-qtd-wrap">
+        <label>Quantidade</label>
+        <input id="da-qtd" type="text" inputmode="decimal" />
+      </div>
+
+      <div class="field">
+        <label>Observação (opcional)</label>
+        <input id="da-obs" type="text" />
+      </div>
+
+      <button class="submit" id="btn-salvar-detalhe-ativo" onclick="salvarEdicaoAtivo()">Salvar alterações</button>
+      <button class="excluir" id="btn-excluir-detalhe-ativo" onclick="excluirAtivo()">Excluir lançamento</button>
+      <p class="link-sutil" onclick="fecharDetalheAtivo()">Cancelar</p>
+      <div id="msg-detalhe-ativo"></div>
+    </div>
+  </div>
+
   <div class="top-bar">
     <button class="menu-btn" onclick="abrirMenu()">☰</button>
   </div>
 
-  <div class="tabs">
-    <button id="tab-btn-lancar" class="active" onclick="irParaView('lancar')">Lançar</button>
-    <button id="tab-btn-resumo" onclick="irParaView('resumo')">Resumo</button>
-  </div>
   <p class="sair-link" onclick="sair()">Sair</p>
 
   <div id="view-lancar" class="view active">
@@ -300,9 +343,9 @@
         <div class="field">
           <label>Categoria</label>
           <select id="dono">
-            <option value="Matheus">Matheus</option>
-            <option value="Casa">Casa</option>
-            <option value="Michelle">Michelle</option>
+            <option value="Matheus">👽 Matheus</option>
+            <option value="Casa">🏠 Casa</option>
+            <option value="Michelle">🙍🏻‍♀️ Michelle</option>
           </select>
         </div>
 
@@ -412,9 +455,9 @@
         <label>Categoria</label>
         <select id="lf-dono" onchange="carregarLancamentos()">
           <option value="">Todas</option>
-          <option value="Casa">Casa</option>
-          <option value="Matheus">Matheus</option>
-          <option value="Michelle">Michelle</option>
+          <option value="Casa">🏠 Casa</option>
+          <option value="Matheus">👽 Matheus</option>
+          <option value="Michelle">🙍🏻‍♀️ Michelle</option>
         </select>
       </div>
 
@@ -596,6 +639,43 @@
     </div>
   </div>
 
+  <div id="view-historico" class="view">
+    <div class="card">
+      <h1>Histórico</h1>
+      <p class="sub">Lançamentos de FIIs e Ações</p>
+
+      <div class="field">
+        <input id="hf-texto" type="text" placeholder="Buscar por ticker ou observação..." oninput="filtrarHistorico()" />
+      </div>
+
+      <div class="lf-row">
+        <div class="field">
+          <label>De</label>
+          <input id="hf-data-de" type="date" onchange="carregarHistorico()" />
+        </div>
+        <div class="field">
+          <label>Até</label>
+          <input id="hf-data-ate" type="date" onchange="carregarHistorico()" />
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Tipo</label>
+        <select id="hf-tipo" onchange="carregarHistorico()">
+          <option value="">Todos</option>
+          <option value="Compra">Compra</option>
+          <option value="Venda">Venda</option>
+          <option value="Rendimento">Rendimento</option>
+          <option value="Taxa">Taxa</option>
+          <option value="Multa">Multa</option>
+        </select>
+      </div>
+
+      <div id="hf-lista"></div>
+      <p class="r-hint" id="hf-count"></p>
+    </div>
+  </div>
+
   <div id="view-ajustes" class="view">
     <div class="card">
       <h1>PittApp</h1>
@@ -638,6 +718,8 @@ let lancamentosCarregados = false;
 let lancamentosTodos = [];
 let lfStatusFiltro = 'tudo';
 let analiseCarregada = false;
+let historicoCarregado = false;
+let historicoTodos = [];
 
 const MOEDAS = ['BRL', 'USD', 'CLP', 'ARS', 'EUR'];
 
@@ -649,8 +731,6 @@ function fillMoedaSelect(sel){
 function irParaView(nome){
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById('view-' + nome).classList.add('active');
-  document.getElementById('tab-btn-lancar').classList.toggle('active', nome === 'lancar');
-  document.getElementById('tab-btn-resumo').classList.toggle('active', nome === 'resumo');
   document.getElementById('menu-btn-lancar').classList.toggle('active', nome === 'lancar');
   document.getElementById('menu-btn-resumo').classList.toggle('active', nome === 'resumo');
   document.getElementById('menu-btn-lancamentos').classList.toggle('active', nome === 'lancamentos');
@@ -658,6 +738,7 @@ function irParaView(nome){
   document.getElementById('menu-btn-analise').classList.toggle('active', nome === 'analise');
   document.getElementById('menu-btn-ativos').classList.toggle('active', nome === 'ativos');
   document.getElementById('menu-btn-posicao').classList.toggle('active', nome === 'posicao');
+  document.getElementById('menu-btn-historico').classList.toggle('active', nome === 'historico');
   document.getElementById('menu-btn-ajustes').classList.toggle('active', nome === 'ajustes');
   if(nome === 'resumo' && !resumoCarregado){
     carregarResumo();
@@ -670,6 +751,9 @@ function irParaView(nome){
   }
   if(nome === 'posicao'){
     carregarPosicao();
+  }
+  if(nome === 'historico' && !historicoCarregado){
+    carregarHistorico();
   }
   if(nome === 'ajustes'){
     carregarAjustesTickers();
@@ -954,6 +1038,11 @@ function fmt(v){
   return neg ? '(' + abs + ')' : abs;
 }
 
+function emojiDono(dono){
+  const map = { Matheus: '👽', Casa: '🏠', Michelle: '🙍🏻‍♀️' };
+  return map[dono] || '';
+}
+
 function tagMoeda(moeda){
   if(!moeda || moeda === 'BRL') return '<span class="moeda-tag moeda-brl">BRL</span>';
   return `<span class="moeda-tag moeda-outra">${moeda}</span>`;
@@ -1159,7 +1248,7 @@ function renderLancamentos(lista){
     const cor = l.fluxo === 'entrada' ? 'var(--green)' : 'var(--red)';
     const catNome = l.categorias ? (l.categorias.grupo && l.categorias.grupo !== l.categorias.nome ? l.categorias.grupo + ' › ' + l.categorias.nome : l.categorias.nome) : '';
     const contaNome = l.contas ? l.contas.nome : '';
-    const donoTag = l.dono ? ' · ' + l.dono : '';
+    const donoTag = l.dono ? ' · ' + emojiDono(l.dono) + ' ' + l.dono : '';
     return `
       <div class="lanc-item clicavel" onclick="abrirDetalheLancamento('${l.id}')">
         <div>
@@ -2012,6 +2101,212 @@ async function carregarPosicao(){
   listaEl.innerHTML = gruposHtml || '<p style="color:var(--muted);font-size:13px;text-align:center;padding:20px 0;">Nenhum ativo lançado ainda.</p>';
   if(custosGerais > 0){
     listaEl.innerHTML += '<p class="r-hint">Taxas/multas gerais (sem ticker): R$ ' + custosGerais.toLocaleString('pt-BR',{minimumFractionDigits:2}) + '</p>';
+  }
+}
+
+// ---------- Histórico de ativos (consulta, edição, exclusão) ----------
+
+async function carregarHistorico(){
+  const de = document.getElementById('hf-data-de').value;
+  const ate = document.getElementById('hf-data-ate').value;
+  const tipo = document.getElementById('hf-tipo').value;
+
+  let q = sb.from('ativos_lancamentos')
+    .select('id, data_hora, tipo, ticker, valor, quantidade, observacao')
+    .order('data_hora', { ascending: false })
+    .limit(1000);
+
+  if(de) q = q.gte('data_hora', de + 'T00:00:00');
+  if(ate) q = q.lte('data_hora', ate + 'T23:59:59');
+  if(tipo) q = q.eq('tipo', tipo);
+
+  const listaEl = document.getElementById('hf-lista');
+  listaEl.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:20px 0;">Carregando...</p>';
+
+  const { data, error } = await q;
+
+  if(error){
+    listaEl.innerHTML = '<p style="color:var(--red);font-size:13px;">Erro: ' + error.message + '</p>';
+    return;
+  }
+
+  historicoTodos = data;
+  historicoCarregado = true;
+  filtrarHistorico();
+}
+
+function filtrarHistorico(){
+  const termo = document.getElementById('hf-texto').value.trim().toLowerCase();
+  let lista = historicoTodos;
+  if(termo){
+    lista = lista.filter(a => {
+      const ticker = (a.ticker || '').toLowerCase();
+      const obs = (a.observacao || '').toLowerCase();
+      return ticker.includes(termo) || obs.includes(termo);
+    });
+  }
+  renderHistorico(lista);
+}
+
+function renderHistorico(lista){
+  const listaEl = document.getElementById('hf-lista');
+  const countEl = document.getElementById('hf-count');
+  countEl.textContent = lista.length + (lista.length === 1 ? ' lançamento' : ' lançamentos');
+
+  if(lista.length === 0){
+    listaEl.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:20px 0;">Nada encontrado.</p>';
+    return;
+  }
+
+  listaEl.innerHTML = lista.map(a => {
+    const d = new Date(a.data_hora);
+    const dataFmt = pad(d.getDate())+'/'+pad(d.getMonth()+1)+'/'+d.getFullYear();
+    const sinal = (a.tipo === 'Venda' || a.tipo === 'Rendimento') ? '+' : '-';
+    const cor = (a.tipo === 'Venda' || a.tipo === 'Rendimento') ? 'var(--green)' : 'var(--red)';
+    const qtdTxt = a.quantidade ? ' · #' + a.quantidade : '';
+    const linha1 = a.ticker ? (a.tipo + ' · ' + a.ticker) : a.tipo;
+    return `
+      <div class="lanc-item clicavel" onclick="abrirDetalheAtivo('${a.id}')">
+        <div>
+          <div>${linha1}</div>
+          <div class="lanc-meta">${dataFmt}${qtdTxt}${a.observacao ? ' · ' + a.observacao : ''}</div>
+        </div>
+        <div style="text-align:right;white-space:nowrap;">
+          <div style="color:${cor};font-weight:600;">${sinal} ${fmt(a.valor)}</div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+let detalheAtivoId = null;
+
+function abrirDetalheAtivo(id){
+  const a = historicoTodos.find(x => x.id === id);
+  if(!a) return;
+  detalheAtivoId = id;
+
+  document.getElementById('da-data').value = a.data_hora.slice(0, 10);
+  document.getElementById('da-tipo').value = a.tipo;
+  document.getElementById('da-ticker').value = a.ticker || '';
+  document.getElementById('da-valor').value = a.valor.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+  document.getElementById('da-qtd').value = a.quantidade != null ? String(a.quantidade).replace('.', ',') : '';
+  document.getElementById('da-obs').value = a.observacao || '';
+
+  onDaTipoChange();
+
+  document.getElementById('msg-detalhe-ativo').textContent = '';
+  document.getElementById('msg-detalhe-ativo').className = '';
+  document.getElementById('btn-salvar-detalhe-ativo').disabled = false;
+  document.getElementById('btn-excluir-detalhe-ativo').disabled = false;
+
+  document.getElementById('detalhe-ativo-overlay').classList.add('active');
+  document.getElementById('detalhe-ativo-sheet').classList.add('active');
+}
+
+function fecharDetalheAtivo(){
+  document.getElementById('detalhe-ativo-overlay').classList.remove('active');
+  document.getElementById('detalhe-ativo-sheet').classList.remove('active');
+  detalheAtivoId = null;
+}
+
+function onDaTipoChange(){
+  const tipo = document.getElementById('da-tipo').value;
+  const precisaQtd = (tipo === 'Compra' || tipo === 'Venda');
+  const precisaTicker = (tipo === 'Compra' || tipo === 'Venda' || tipo === 'Rendimento');
+  document.getElementById('da-qtd-wrap').style.display = precisaQtd ? 'block' : 'none';
+  document.getElementById('da-ticker-wrap').style.display = precisaTicker ? 'block' : 'none';
+}
+
+function showMsgDetalheAtivo(text, type){
+  const m = document.getElementById('msg-detalhe-ativo');
+  m.textContent = text;
+  m.className = type;
+}
+
+async function salvarEdicaoAtivo(){
+  if(!detalheAtivoId) return;
+
+  const data = document.getElementById('da-data').value;
+  const tipo = document.getElementById('da-tipo').value;
+  const precisaTicker = (tipo === 'Compra' || tipo === 'Venda' || tipo === 'Rendimento');
+  const precisaQtd = (tipo === 'Compra' || tipo === 'Venda');
+  const ticker = document.getElementById('da-ticker').value.trim().toUpperCase() || null;
+  const valor = parseNumBr(document.getElementById('da-valor').value);
+  const qtdRaw = document.getElementById('da-qtd').value;
+  const qtd = qtdRaw ? parseNumBr(qtdRaw) : null;
+  const obs = document.getElementById('da-obs').value || null;
+
+  if(!data){
+    showMsgDetalheAtivo('Escolhe uma data.', 'err');
+    return;
+  }
+  if(!valor || isNaN(valor) || valor <= 0){
+    showMsgDetalheAtivo('Informa um valor válido.', 'err');
+    return;
+  }
+  if(precisaTicker && !ticker){
+    showMsgDetalheAtivo('Informa o FII ou Ação.', 'err');
+    return;
+  }
+  if(precisaQtd && (!qtd || isNaN(qtd) || qtd <= 0)){
+    showMsgDetalheAtivo('Compra e Venda precisam de quantidade.', 'err');
+    return;
+  }
+
+  const original = historicoTodos.find(x => x.id === detalheAtivoId);
+  const dataHoraIso = combinarDataIso(data, original.data_hora);
+
+  const btnSalvar = document.getElementById('btn-salvar-detalhe-ativo');
+  const btnExcluir = document.getElementById('btn-excluir-detalhe-ativo');
+  btnSalvar.disabled = true;
+  btnExcluir.disabled = true;
+  showMsgDetalheAtivo('Salvando...', '');
+
+  const { error } = await sb.from('ativos_lancamentos').update({
+    data_hora: dataHoraIso,
+    tipo: tipo,
+    ticker: precisaTicker ? ticker : null,
+    valor: valor,
+    quantidade: precisaQtd ? qtd : null,
+    observacao: obs
+  }).eq('id', detalheAtivoId);
+
+  btnSalvar.disabled = false;
+  btnExcluir.disabled = false;
+
+  if(error){
+    showMsgDetalheAtivo('Erro ao salvar: ' + error.message, 'err');
+  } else {
+    showMsgDetalheAtivo('Lançamento atualizado!', 'ok');
+    historicoCarregado = false;
+    setTimeout(() => {
+      fecharDetalheAtivo();
+      carregarHistorico();
+    }, 500);
+  }
+}
+
+async function excluirAtivo(){
+  if(!detalheAtivoId) return;
+  if(!confirm('Excluir esse lançamento? Essa ação não pode ser desfeita.')) return;
+
+  const btnSalvar = document.getElementById('btn-salvar-detalhe-ativo');
+  const btnExcluir = document.getElementById('btn-excluir-detalhe-ativo');
+  btnSalvar.disabled = true;
+  btnExcluir.disabled = true;
+  showMsgDetalheAtivo('Excluindo...', '');
+
+  const { error } = await sb.from('ativos_lancamentos').delete().eq('id', detalheAtivoId);
+
+  btnSalvar.disabled = false;
+  btnExcluir.disabled = false;
+
+  if(error){
+    showMsgDetalheAtivo('Erro ao excluir: ' + error.message, 'err');
+  } else {
+    historicoCarregado = false;
+    fecharDetalheAtivo();
+    carregarHistorico();
   }
 }
 
