@@ -55,7 +55,7 @@
   /* Nível 2 — subtotal por moeda (só aparece quando o grupo tem mais de uma moeda): banda com fundo, não clicável */
   .moeda-grupo{background:rgba(232,98,44,0.08);border-radius:8px;margin-top:8px;overflow:hidden;}
   .moeda-total-linha{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--orange);cursor:default;}
-  .moeda-total-linha span:last-child{font-size:13.5px;font-weight:700;text-transform:none;letter-spacing:0;color:var(--gray1);}
+  .moeda-total-linha span:last-child{font-size:13.5px;font-weight:700;text-transform:none;letter-spacing:0;color:var(--orange);}
   .moeda-grupo .sub-linha{padding:7px 12px 7px 20px;}
 
   /* Nível 3 — cada conta individual: texto pequeno e discreto, sem interação */
@@ -543,6 +543,85 @@
 
       <button class="submit" id="btn-salvar-treino" onclick="salvarTreino()">Salvar treino</button>
       <div id="msg-treino"></div>
+
+      <p class="subhead-mini" style="margin-top:28px;">Treinos Realizados</p>
+
+      <div class="field">
+        <input id="tf-texto" type="text" placeholder="Buscar por observação, tipo, grupo..." oninput="filtrarTreinos()" />
+      </div>
+
+      <div class="lf-row">
+        <div class="field">
+          <label>De</label>
+          <input id="tf-data-de" type="date" onchange="carregarTreinosRealizados()" />
+        </div>
+        <div class="field">
+          <label>Até</label>
+          <input id="tf-data-ate" type="date" onchange="carregarTreinosRealizados()" />
+        </div>
+      </div>
+
+      <div id="tf-lista"></div>
+      <p class="r-hint" id="tf-count"></p>
+    </div>
+  </div>
+
+  <div id="detalhe-treino-overlay" class="detalhe-overlay" onclick="fecharDetalheTreino()"></div>
+  <div id="detalhe-treino-sheet" class="detalhe-sheet">
+    <div class="card">
+      <h1>Editar treino</h1>
+      <p class="sub">Altere os campos e salve, ou exclua o treino.</p>
+
+      <div class="field">
+        <label>Data</label>
+        <input id="dtr-data" type="date" />
+      </div>
+
+      <div class="field">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:0;">
+          <input type="checkbox" id="dtr-aerobico-check" onchange="toggleAerobicoEdicao()" style="width:auto;" />
+          <span>Aeróbico</span>
+        </label>
+      </div>
+
+      <div id="dtr-aerobico-wrap" style="display:none;">
+        <div class="field">
+          <label>Tipo</label>
+          <select id="dtr-aerobico-tipo">
+            <option value="">Selecionar...</option>
+            <option value="Corrida">Corrida</option>
+            <option value="Caminhada">Caminhada</option>
+            <option value="Esteira">Esteira</option>
+            <option value="Outro">Outro</option>
+          </select>
+        </div>
+        <div class="lf-row">
+          <div class="field">
+            <label>Minutos</label>
+            <input id="dtr-aerobico-tempo" type="number" min="0" inputmode="numeric" />
+          </div>
+          <div class="field">
+            <label>Segundos</label>
+            <input id="dtr-aerobico-segundos" type="number" min="0" max="59" inputmode="numeric" />
+          </div>
+        </div>
+        <div class="field">
+          <label>Distância (km)</label>
+          <input id="dtr-aerobico-distancia" type="text" inputmode="decimal" />
+        </div>
+      </div>
+
+      <div id="dtr-treino-selects"></div>
+
+      <div class="field">
+        <label>Observação (opcional)</label>
+        <input id="dtr-obs" type="text" />
+      </div>
+
+      <button class="submit" id="btn-salvar-detalhe-treino" onclick="salvarEdicaoTreino()">Salvar alterações</button>
+      <button class="excluir" id="btn-excluir-detalhe-treino" onclick="excluirTreino()">Excluir treino</button>
+      <p class="link-sutil" onclick="fecharDetalheTreino()">Cancelar</p>
+      <div id="msg-detalhe-treino"></div>
     </div>
   </div>
 
@@ -642,9 +721,12 @@
       <div class="destaque-card">
         <div class="destaque-titulo">Patrimônio</div>
         <div class="destaque-total" id="pos-total">...</div>
-        <div class="destaque-sub">
-          <div class="destaque-sub-item"><span class="num" id="pos-total-fiis">R$ 0</span><span class="lbl">Total FIIs</span></div>
-          <div class="destaque-sub-item"><span class="num" id="pos-total-acoes">R$ 0</span><span class="lbl">Total Ações</span></div>
+      </div>
+
+      <div class="moeda-grupo" style="margin-bottom:10px;">
+        <div class="moeda-total-linha">
+          <span>Saldo Investimento</span>
+          <span id="pos-saldo-investimento">...</span>
         </div>
       </div>
 
@@ -734,11 +816,15 @@ let lfStatusFiltro = 'tudo';
 let analiseCarregada = false;
 let historicoCarregado = false;
 let historicoTodos = [];
+let treinosRealizadosCarregado = false;
+let treinosRealizadosTodos = [];
+let treinosSelecionadosEdicao = [''];
+let detalheTreinoId = null;
 
 const MOEDAS = ['BRL', 'USD', 'CLP', 'ARS', 'EUR'];
 
 function fillMoedaSelect(sel){
-  sel.innerHTML = MOEDAS.map(m => `<option value="${m}">${m}</option>`).join('');
+  sel.innerHTML = MOEDAS.map(m => `<option value="${m}">${BANDEIRAS_MOEDA[m] || ''} ${m}</option>`).join('');
   sel.value = 'BRL';
 }
 
@@ -768,6 +854,9 @@ function irParaView(nome){
   }
   if(nome === 'historico' && !historicoCarregado){
     carregarHistorico();
+  }
+  if(nome === 'treinos' && !treinosRealizadosCarregado){
+    carregarTreinosRealizados();
   }
   if(nome === 'ajustes'){
     carregarAjustesTickers();
@@ -1057,9 +1146,13 @@ function emojiDono(dono){
   return map[dono] || '';
 }
 
+const BANDEIRAS_MOEDA = { BRL: '🇧🇷', USD: '🇺🇸', CLP: '🇨🇱', ARS: '🇦🇷', EUR: '🇪🇺' };
+
 function tagMoeda(moeda){
-  if(!moeda || moeda === 'BRL') return '<span class="moeda-tag moeda-brl">BRL</span>';
-  return `<span class="moeda-tag moeda-outra">${moeda}</span>`;
+  const m = moeda || 'BRL';
+  const bandeira = BANDEIRAS_MOEDA[m] || '';
+  if(m === 'BRL') return `<span class="moeda-tag moeda-brl">${bandeira} BRL</span>`;
+  return `<span class="moeda-tag moeda-outra">${bandeira} ${m}</span>`;
 }
 
 // Busca a cotação de cada moeda (de MOEDAS) pra BRL, numa API pública sem chave.
@@ -1084,6 +1177,7 @@ async function buscarCotacoes(){
           resultado[m] = taxa;
           const chave = 'cotacao_' + m.toLowerCase() + '_brl';
           sb.from('config').update({ valor: String(taxa), atualizado_em: new Date().toISOString() }).eq('chave', chave).then(() => {});
+          atualizarCotacaoMensal(m, taxa);
         }
       });
     }
@@ -1106,6 +1200,28 @@ async function buscarCotacoes(){
   return resultado;
 }
 
+// Mantém uma média móvel da cotação de cada moeda por mês/ano, pra dar pra
+// converter despesas antigas em moeda estrangeira pro valor médio daquele mês
+// (útil pra DRE e análises futuras), em vez de usar sempre a cotação de hoje.
+// Roda em segundo plano (não trava a tela) toda vez que uma cotação é buscada.
+async function atualizarCotacaoMensal(moeda, taxaHoje){
+  try{
+    const agora = new Date();
+    const ano = agora.getFullYear();
+    const mes = agora.getMonth() + 1;
+    const { data: atual } = await sb.from('cotacoes_mensais').select('taxa_media, amostras').eq('moeda', moeda).eq('ano', ano).eq('mes', mes).maybeSingle();
+    if(atual){
+      const novasAmostras = atual.amostras + 1;
+      const novaMedia = (atual.taxa_media * atual.amostras + taxaHoje) / novasAmostras;
+      await sb.from('cotacoes_mensais').update({ taxa_media: novaMedia, amostras: novasAmostras, atualizado_em: agora.toISOString() }).eq('moeda', moeda).eq('ano', ano).eq('mes', mes);
+    } else {
+      await sb.from('cotacoes_mensais').insert([{ moeda: moeda, ano: ano, mes: mes, taxa_media: taxaHoje, amostras: 1 }]);
+    }
+  } catch(e){
+    console.warn('Não deu pra atualizar a cotação média mensal de ' + moeda + ':', e.message);
+  }
+}
+
 async function carregarResumo(){
   const totalEl = document.getElementById('r-total');
   const gruposEl = document.getElementById('r-grupos');
@@ -1113,7 +1229,7 @@ async function carregarResumo(){
   gruposEl.innerHTML = '';
 
   const { data: contas, error: e1 } = await sb.from('contas').select('id, nome, ordem, grupo_resumo').eq('ativa', true).not('grupo_resumo', 'is', null).order('ordem');
-  const cotacoes = await buscarCotacoes();
+  const [cotacoes, posicaoAtivos] = await Promise.all([buscarCotacoes(), calcularPosicaoAtivos()]);
 
   // O Supabase limita cada consulta a 1000 linhas por padrão — com o histórico
   // completo migrado (5800+ lançamentos), é preciso buscar em páginas até
@@ -1167,6 +1283,13 @@ async function carregarResumo(){
       moedas.forEach(m => gruposMap[nomeGrupo].push({ conta: c.nome, moeda: m, saldo: mapaMoedas[m] }));
     }
   });
+
+  // Soma o valor de mercado de FIIs e Ações dentro de Investimentos, junto com
+  // Renda Fixa e as contas em moeda estrangeira (por enquanto FIIs e Ações
+  // ficam juntos numa linha só, sem separar os dois).
+  if(!posicaoAtivos.erro && gruposMap['Investimentos']){
+    gruposMap['Investimentos'].push({ conta: 'FIIs e Ações', moeda: 'BRL', saldo: posicaoAtivos.patrimonioTotal });
+  }
 
   let totalGeral = 0;
   Object.values(gruposMap).forEach(itens => {
@@ -1622,6 +1745,242 @@ async function salvarTreino(){
     treinosSelecionados = [''];
     renderTreinoSelects();
     setDefaultData('data-treino');
+    treinosRealizadosCarregado = false;
+    carregarTreinosRealizados();
+  }
+}
+
+async function carregarTreinosRealizados(){
+  const de = document.getElementById('tf-data-de').value;
+  const ate = document.getElementById('tf-data-ate').value;
+
+  let q = sb.from('treinos')
+    .select('id, data_hora, aerobico, tempo_min, tempo_seg, distancia_km, tipo_aerobico, grupos_musculares, observacao')
+    .order('data_hora', { ascending: false })
+    .limit(1000);
+
+  if(de) q = q.gte('data_hora', de + 'T00:00:00');
+  if(ate) q = q.lte('data_hora', ate + 'T23:59:59');
+
+  const listaEl = document.getElementById('tf-lista');
+  listaEl.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:20px 0;">Carregando...</p>';
+
+  const { data, error } = await q;
+
+  if(error){
+    listaEl.innerHTML = '<p style="color:var(--red);font-size:13px;">Erro: ' + error.message + '</p>';
+    return;
+  }
+
+  treinosRealizadosTodos = data;
+  treinosRealizadosCarregado = true;
+  filtrarTreinos();
+}
+
+function filtrarTreinos(){
+  const termo = document.getElementById('tf-texto').value.trim().toLowerCase();
+  let lista = treinosRealizadosTodos;
+  if(termo){
+    lista = lista.filter(t => {
+      const obs = (t.observacao || '').toLowerCase();
+      const tipo = (t.tipo_aerobico || '').toLowerCase();
+      const grupos = (t.grupos_musculares || []).join(' ').toLowerCase();
+      return obs.includes(termo) || tipo.includes(termo) || grupos.includes(termo);
+    });
+  }
+  renderTreinosRealizados(lista);
+}
+
+function renderTreinosRealizados(lista){
+  const listaEl = document.getElementById('tf-lista');
+  const countEl = document.getElementById('tf-count');
+  countEl.textContent = lista.length + (lista.length === 1 ? ' treino' : ' treinos');
+
+  if(lista.length === 0){
+    listaEl.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:20px 0;">Nada encontrado.</p>';
+    return;
+  }
+
+  listaEl.innerHTML = lista.map(t => {
+    const d = new Date(t.data_hora);
+    const dataFmt = pad(d.getDate())+'/'+pad(d.getMonth()+1)+'/'+d.getFullYear();
+    const linha1 = t.aerobico ? ('Aeróbico · ' + (t.tipo_aerobico || '')) : (t.grupos_musculares || []).join(', ');
+    let metaExtra = '';
+    if(t.aerobico){
+      const tempoTxt = [t.tempo_min ? t.tempo_min + 'min' : null, t.tempo_seg ? t.tempo_seg + 's' : null].filter(Boolean).join(' ');
+      const distTxt = t.distancia_km ? t.distancia_km.toLocaleString('pt-BR') + 'km' : '';
+      metaExtra = [tempoTxt, distTxt].filter(Boolean).join(' · ');
+    }
+    return `
+      <div class="lanc-item clicavel" onclick="abrirDetalheTreino('${t.id}')">
+        <div>
+          <div>${linha1}</div>
+          <div class="lanc-meta">${dataFmt}${metaExtra ? ' · ' + metaExtra : ''}${t.observacao ? ' · ' + t.observacao : ''}</div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function abrirDetalheTreino(id){
+  const t = treinosRealizadosTodos.find(x => x.id === id);
+  if(!t) return;
+  detalheTreinoId = id;
+
+  document.getElementById('dtr-data').value = t.data_hora.slice(0, 10);
+  document.getElementById('dtr-aerobico-check').checked = !!t.aerobico;
+  document.getElementById('dtr-aerobico-tipo').value = t.tipo_aerobico || '';
+  document.getElementById('dtr-aerobico-tempo').value = t.tempo_min != null ? t.tempo_min : '';
+  document.getElementById('dtr-aerobico-segundos').value = t.tempo_seg != null ? t.tempo_seg : '';
+  document.getElementById('dtr-aerobico-distancia').value = t.distancia_km != null ? String(t.distancia_km).replace('.', ',') : '';
+  document.getElementById('dtr-obs').value = t.observacao || '';
+
+  toggleAerobicoEdicao();
+
+  const grupos = (t.grupos_musculares || []).slice();
+  treinosSelecionadosEdicao = grupos.length && grupos.length < 5 ? grupos.concat(['']) : (grupos.length ? grupos : ['']);
+  renderTreinoSelectsEdicao();
+
+  showMsgDetalheTreino('', '');
+  document.getElementById('btn-salvar-detalhe-treino').disabled = false;
+  document.getElementById('btn-excluir-detalhe-treino').disabled = false;
+
+  document.getElementById('detalhe-treino-overlay').classList.add('active');
+  document.getElementById('detalhe-treino-sheet').classList.add('active');
+}
+
+function fecharDetalheTreino(){
+  document.getElementById('detalhe-treino-overlay').classList.remove('active');
+  document.getElementById('detalhe-treino-sheet').classList.remove('active');
+  detalheTreinoId = null;
+}
+
+function toggleAerobicoEdicao(){
+  const marcado = document.getElementById('dtr-aerobico-check').checked;
+  document.getElementById('dtr-aerobico-wrap').style.display = marcado ? 'block' : 'none';
+}
+
+function renderTreinoSelectsEdicao(){
+  const wrap = document.getElementById('dtr-treino-selects');
+  wrap.innerHTML = treinosSelecionadosEdicao.map((val, i) => {
+    const usados = treinosSelecionadosEdicao.filter((v, j) => v && j !== i);
+    const opcoes = GRUPOS_MUSCULARES.filter(g => !usados.includes(g));
+    return `<div class="field">
+      <label>Treino ${i + 1}</label>
+      <select onchange="onTreinoSelectChangeEdicao(${i}, this.value)">
+        <option value="">Selecionar...</option>
+        ${opcoes.map(g => `<option value="${g}" ${g === val ? 'selected' : ''}>${g}</option>`).join('')}
+      </select>
+    </div>`;
+  }).join('');
+}
+
+function onTreinoSelectChangeEdicao(i, val){
+  treinosSelecionadosEdicao[i] = val;
+  if(val && i === treinosSelecionadosEdicao.length - 1 && treinosSelecionadosEdicao.length < 5){
+    treinosSelecionadosEdicao.push('');
+  }
+  renderTreinoSelectsEdicao();
+}
+
+function showMsgDetalheTreino(text, type){
+  const m = document.getElementById('msg-detalhe-treino');
+  m.textContent = text;
+  m.className = type;
+}
+
+async function salvarEdicaoTreino(){
+  if(!detalheTreinoId) return;
+
+  const data = document.getElementById('dtr-data').value;
+  if(!data){
+    showMsgDetalheTreino('Escolhe uma data.', 'err');
+    return;
+  }
+
+  const aerobico = document.getElementById('dtr-aerobico-check').checked;
+  const tempoMinRaw = document.getElementById('dtr-aerobico-tempo').value;
+  const tempoSegRaw = document.getElementById('dtr-aerobico-segundos').value;
+  const tempoMin = aerobico && tempoMinRaw ? parseInt(tempoMinRaw, 10) : (aerobico ? 0 : null);
+  let tempoSeg = aerobico && tempoSegRaw ? parseInt(tempoSegRaw, 10) : (aerobico ? 0 : null);
+  if(aerobico && tempoSeg !== null){
+    if(isNaN(tempoSeg) || tempoSeg < 0) tempoSeg = 0;
+    if(tempoSeg > 59) tempoSeg = 59;
+  }
+  const distanciaRaw = document.getElementById('dtr-aerobico-distancia').value;
+  const distanciaKm = aerobico && distanciaRaw ? parseFloat(distanciaRaw.replace(',', '.')) : null;
+  const tipoAerobico = aerobico ? (document.getElementById('dtr-aerobico-tipo').value || null) : null;
+  const grupos = treinosSelecionadosEdicao.filter(g => g);
+  const obs = document.getElementById('dtr-obs').value || null;
+
+  if(!aerobico && grupos.length === 0){
+    showMsgDetalheTreino('Marca aeróbico ou escolhe pelo menos um grupo muscular.', 'err');
+    return;
+  }
+  if(aerobico && !tipoAerobico){
+    showMsgDetalheTreino('Escolhe o tipo de aeróbico.', 'err');
+    return;
+  }
+  if(aerobico && (tempoMin || 0) === 0 && (tempoSeg || 0) === 0){
+    showMsgDetalheTreino('Informa o tempo do aeróbico (minutos e/ou segundos).', 'err');
+    return;
+  }
+
+  const original = treinosRealizadosTodos.find(x => x.id === detalheTreinoId);
+  const dataHoraIso = combinarDataIso(data, original.data_hora);
+
+  const btnSalvar = document.getElementById('btn-salvar-detalhe-treino');
+  const btnExcluir = document.getElementById('btn-excluir-detalhe-treino');
+  btnSalvar.disabled = true;
+  btnExcluir.disabled = true;
+  showMsgDetalheTreino('Salvando...', '');
+
+  const { error } = await sb.from('treinos').update({
+    data_hora: dataHoraIso,
+    aerobico: aerobico,
+    tempo_min: tempoMin,
+    tempo_seg: tempoSeg,
+    distancia_km: (distanciaKm === null || isNaN(distanciaKm)) ? null : distanciaKm,
+    tipo_aerobico: tipoAerobico,
+    grupos_musculares: grupos,
+    observacao: obs
+  }).eq('id', detalheTreinoId);
+
+  btnSalvar.disabled = false;
+  btnExcluir.disabled = false;
+
+  if(error){
+    showMsgDetalheTreino('Erro ao salvar: ' + error.message, 'err');
+  } else {
+    showMsgDetalheTreino('Treino atualizado!', 'ok');
+    treinosRealizadosCarregado = false;
+    setTimeout(() => {
+      fecharDetalheTreino();
+      carregarTreinosRealizados();
+    }, 500);
+  }
+}
+
+async function excluirTreino(){
+  if(!detalheTreinoId) return;
+  if(!confirm('Excluir esse treino? Essa ação não pode ser desfeita.')) return;
+
+  const btnSalvar = document.getElementById('btn-salvar-detalhe-treino');
+  const btnExcluir = document.getElementById('btn-excluir-detalhe-treino');
+  btnSalvar.disabled = true;
+  btnExcluir.disabled = true;
+  showMsgDetalheTreino('Excluindo...', '');
+
+  const { error } = await sb.from('treinos').delete().eq('id', detalheTreinoId);
+
+  btnSalvar.disabled = false;
+  btnExcluir.disabled = false;
+
+  if(error){
+    showMsgDetalheTreino('Erro ao excluir: ' + error.message, 'err');
+  } else {
+    treinosRealizadosCarregado = false;
+    fecharDetalheTreino();
+    carregarTreinosRealizados();
   }
 }
 
@@ -2057,12 +2416,9 @@ function togglePosGrupo(nome){
   document.getElementById('posgrupo-' + nome).classList.toggle('aberto');
 }
 
-async function carregarPosicao(){
-  const listaEl = document.getElementById('pos-lista');
-  const totalEl = document.getElementById('pos-total');
-  listaEl.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:20px 0;">Carregando...</p>';
-  totalEl.textContent = '...';
-
+// Cálculo compartilhado da posição de FIIs e Ações (usado pela aba Posição e
+// também pelo Resumo, que precisa só do patrimonioTotal pra somar em Investimentos).
+async function calcularPosicaoAtivos(){
   let lancs = [];
   let erro = null;
   const PAGE = 1000;
@@ -2076,9 +2432,7 @@ async function carregarPosicao(){
   const { data: cotacoes, error: e2 } = await sb.from('cotacoes_ativos').select('ticker, valor, atualizado_em');
 
   if(erro || e2){
-    listaEl.innerHTML = '<p style="color:var(--red);font-size:13px;">Erro: ' + ((erro && erro.message) || (e2 && e2.message)) + '</p>';
-    totalEl.textContent = 'erro';
-    return;
+    return { erro: (erro && erro.message) || (e2 && e2.message) };
   }
 
   const cotacaoPorTicker = {};
@@ -2121,10 +2475,68 @@ async function carregarPosicao(){
   const posicoes = tickers.map(montaPosicao);
   const fiis = posicoes.filter(p => ehFii(p.ticker));
   const acoes = posicoes.filter(p => !ehFii(p.ticker));
-
   const totalFiis = fiis.reduce((s, p) => s + (p.quantidade > 0 ? p.valorAtual : 0), 0);
   const totalAcoes = acoes.reduce((s, p) => s + (p.quantidade > 0 ? p.valorAtual : 0), 0);
   const patrimonioTotal = totalFiis + totalAcoes;
+
+  return { fiis, acoes, totalFiis, totalAcoes, patrimonioTotal, custosGerais };
+}
+
+// "Saldo Investimento" = dinheiro que já entrou no "bolso" de FIIs/Ações (aportes
+// feitos como Saída > Investimentos > FIIs e Ações, mais rendimentos e vendas)
+// e ainda não foi usado pra comprar nenhum ativo específico — ou seja, caixa
+// disponível dentro da carteira. Mesma fórmula da célula B2 da aba "Resumo FIIs"
+// da planilha antiga: aportes - compras + rendimentos + vendas - resgates - taxas - multas.
+function categoriaFiisAcoes(fluxo){
+  const pai = categorias.find(c => c.fluxo === fluxo && c.categoria_pai_id === null && c.nome === 'Investimentos');
+  if(!pai) return null;
+  return categorias.find(c => c.fluxo === fluxo && c.categoria_pai_id === pai.id && c.nome === 'FIIs e Ações');
+}
+
+async function calcularSaldoInvestimento(){
+  const catSaida = categoriaFiisAcoes('saida');
+  const catEntrada = categoriaFiisAcoes('entrada');
+
+  const [aportesResp, resgatesResp, ativosResp] = await Promise.all([
+    catSaida ? sb.from('lancamentos').select('valor').eq('fluxo', 'saida').eq('categoria_id', catSaida.id) : Promise.resolve({ data: [] }),
+    catEntrada ? sb.from('lancamentos').select('valor').eq('fluxo', 'entrada').eq('categoria_id', catEntrada.id) : Promise.resolve({ data: [] }),
+    sb.from('ativos_lancamentos').select('tipo, valor')
+  ]);
+
+  const somaAportes = (aportesResp.data || []).reduce((s, l) => s + Number(l.valor), 0);
+  const somaResgates = (resgatesResp.data || []).reduce((s, l) => s + Number(l.valor), 0);
+
+  let compras = 0, rendimentos = 0, vendas = 0, taxas = 0, multas = 0;
+  (ativosResp.data || []).forEach(a => {
+    const v = Number(a.valor);
+    if(a.tipo === 'Compra') compras += v;
+    else if(a.tipo === 'Rendimento') rendimentos += v;
+    else if(a.tipo === 'Venda') vendas += v;
+    else if(a.tipo === 'Taxa') taxas += v;
+    else if(a.tipo === 'Multa') multas += v;
+  });
+
+  return somaAportes - compras + rendimentos + vendas - somaResgates - taxas - multas;
+}
+
+async function carregarPosicao(){
+  const listaEl = document.getElementById('pos-lista');
+  const totalEl = document.getElementById('pos-total');
+  const saldoEl = document.getElementById('pos-saldo-investimento');
+  listaEl.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:20px 0;">Carregando...</p>';
+  totalEl.textContent = '...';
+  saldoEl.textContent = '...';
+
+  const [posicao, saldoInvestimento] = await Promise.all([calcularPosicaoAtivos(), calcularSaldoInvestimento()]);
+
+  if(posicao.erro){
+    listaEl.innerHTML = '<p style="color:var(--red);font-size:13px;">Erro: ' + posicao.erro + '</p>';
+    totalEl.textContent = 'erro';
+    return;
+  }
+
+  const { fiis, acoes, totalFiis, totalAcoes, patrimonioTotal, custosGerais } = posicao;
+  saldoEl.textContent = fmtR$(saldoInvestimento);
 
   function renderItem(p){
     const corRent = p.rentabilidade < 0 ? 'var(--red)' : 'var(--green)';
@@ -2166,8 +2578,6 @@ async function carregarPosicao(){
   }
 
   totalEl.textContent = fmtR$(patrimonioTotal);
-  document.getElementById('pos-total-fiis').textContent = fmtR$(totalFiis);
-  document.getElementById('pos-total-acoes').textContent = fmtR$(totalAcoes);
 
   const gruposHtml = renderGrupo('fiis', 'FIIs', fiis, totalFiis) + renderGrupo('acoes', 'Ações', acoes, totalAcoes);
   listaEl.innerHTML = gruposHtml || '<p style="color:var(--muted);font-size:13px;text-align:center;padding:20px 0;">Nenhum ativo lançado ainda.</p>';
