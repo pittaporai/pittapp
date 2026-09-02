@@ -110,6 +110,15 @@
   .ticker-item{display:flex;justify-content:space-between;align-items:center;padding:10px 2px;border-bottom:1px solid var(--line);font-size:13.5px;}
   .ticker-item:last-child{border-bottom:none;}
   .ticker-item .del{color:var(--red);background:none;border:none;font-size:13px;cursor:pointer;padding:4px 8px;}
+
+  .lanc-item.clicavel{cursor:pointer;}
+  .lanc-item.clicavel:active{background:var(--panel-2);}
+  .detalhe-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:60;}
+  .detalhe-overlay.active{display:block;}
+  .detalhe-sheet{display:none;position:fixed;inset:0;z-index:61;overflow-y:auto;padding:24px 16px calc(40px + env(safe-area-inset-bottom));}
+  .detalhe-sheet.active{display:block;}
+  button.excluir{width:100%;padding:14px;border:none;border-radius:10px;background:transparent;border:1px solid var(--red);color:var(--red);font-size:15px;font-weight:600;cursor:pointer;margin-top:10px;}
+  button.excluir:disabled{opacity:.5;}
 </style>
 </head>
 <body>
@@ -173,6 +182,71 @@
       <button id="menu-btn-ajustes" onclick="irParaView('ajustes')">⚙️ Ajustes</button>
     </nav>
     <p class="menu-hint">Mais ajustes em breve: gerenciar grupos/subgrupos, reclassificar lançamentos em massa.</p>
+  </div>
+
+  <div id="detalhe-overlay" class="detalhe-overlay" onclick="fecharDetalheLancamento()"></div>
+  <div id="detalhe-sheet" class="detalhe-sheet">
+    <div class="card">
+      <h1>Editar lançamento</h1>
+      <p class="sub" id="detalhe-sub">Altere os campos e salve, ou exclua o lançamento.</p>
+
+      <div class="field">
+        <label>Valor</label>
+        <input id="dt-valor" inputmode="decimal" placeholder="0,00" />
+      </div>
+
+      <div class="field">
+        <label>Moeda</label>
+        <select id="dt-moeda"></select>
+      </div>
+
+      <div class="field">
+        <label>Fluxo</label>
+        <select id="dt-fluxo" onchange="onDtFluxoChange()">
+          <option value="entrada">Entrada</option>
+          <option value="saida">Saída</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Grupo</label>
+        <select id="dt-cat-macro" onchange="onDtMacroChange()"></select>
+      </div>
+
+      <div class="field" id="dt-micro-wrap">
+        <label>Subgrupo</label>
+        <select id="dt-cat-micro"></select>
+      </div>
+
+      <div class="field">
+        <label>Conta</label>
+        <select id="dt-conta"></select>
+      </div>
+
+      <div class="field">
+        <label>Categoria</label>
+        <select id="dt-dono">
+          <option value="Matheus">Matheus</option>
+          <option value="Casa">Casa</option>
+          <option value="Michelle">Michelle</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Data</label>
+        <input id="dt-data" type="date" />
+      </div>
+
+      <div class="field">
+        <label>Observação (opcional)</label>
+        <input id="dt-obs" type="text" />
+      </div>
+
+      <button class="submit" id="btn-salvar-detalhe" onclick="salvarEdicaoLancamento()">Salvar alterações</button>
+      <button class="excluir" id="btn-excluir-detalhe" onclick="excluirLancamento()">Excluir lançamento</button>
+      <p class="link-sutil" onclick="fecharDetalheLancamento()">Cancelar</p>
+      <div id="msg-detalhe"></div>
+    </div>
   </div>
 
   <div class="top-bar">
@@ -1008,7 +1082,7 @@ async function carregarLancamentos(){
   const dono = document.getElementById('lf-dono').value;
 
   let q = sb.from('lancamentos')
-    .select('id, fluxo, valor, moeda, dono, data_hora, observacao, contas(nome), categorias(nome, grupo)')
+    .select('id, fluxo, valor, moeda, dono, data_hora, observacao, categoria_id, conta_id, contas(nome), categorias(nome, grupo)')
     .order('data_hora', { ascending: false })
     .limit(500);
 
@@ -1087,7 +1161,7 @@ function renderLancamentos(lista){
     const contaNome = l.contas ? l.contas.nome : '';
     const donoTag = l.dono ? ' · ' + l.dono : '';
     return `
-      <div class="lanc-item">
+      <div class="lanc-item clicavel" onclick="abrirDetalheLancamento('${l.id}')">
         <div>
           <div>${catNome}</div>
           <div class="lanc-meta">${dataFmt} · ${contaNome}${donoTag}${l.observacao ? ' · ' + l.observacao : ''}</div>
@@ -1098,6 +1172,183 @@ function renderLancamentos(lista){
         </div>
       </div>`;
   }).join('');
+}
+
+// ---------- Detalhe / edição / exclusão de lançamento ----------
+
+let detalheLancamentoId = null;
+
+function abrirDetalheLancamento(id){
+  const l = lancamentosTodos.find(x => x.id === id);
+  if(!l) return;
+  detalheLancamentoId = id;
+
+  document.getElementById('dt-valor').value = l.valor.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+  fillMoedaSelect(document.getElementById('dt-moeda'));
+  document.getElementById('dt-moeda').value = l.moeda || 'BRL';
+  document.getElementById('dt-fluxo').value = l.fluxo;
+  document.getElementById('dt-dono').value = l.dono || 'Matheus';
+  document.getElementById('dt-data').value = l.data_hora.slice(0, 10);
+  document.getElementById('dt-obs').value = l.observacao || '';
+
+  // conta: reaproveita as opções já carregadas no select de Lançar
+  document.getElementById('dt-conta').innerHTML = document.getElementById('conta').innerHTML;
+  document.getElementById('dt-conta').value = l.conta_id;
+
+  popularDtMacro(l.fluxo, l.categoria_id);
+
+  document.getElementById('msg-detalhe').textContent = '';
+  document.getElementById('msg-detalhe').className = '';
+  document.getElementById('btn-salvar-detalhe').disabled = false;
+  document.getElementById('btn-excluir-detalhe').disabled = false;
+
+  document.getElementById('detalhe-overlay').classList.add('active');
+  document.getElementById('detalhe-sheet').classList.add('active');
+}
+
+function fecharDetalheLancamento(){
+  document.getElementById('detalhe-overlay').classList.remove('active');
+  document.getElementById('detalhe-sheet').classList.remove('active');
+  detalheLancamentoId = null;
+}
+
+function popularDtMacro(fluxo, categoriaIdAtual){
+  const macroSel = document.getElementById('dt-cat-macro');
+  const list = categorias.filter(c => c.fluxo === fluxo && c.categoria_pai_id === null);
+  fillSelect(macroSel, list, c => c.nome);
+
+  let macroId = categoriaIdAtual;
+  const catAtual = categorias.find(c => c.id === categoriaIdAtual);
+  if(catAtual && catAtual.categoria_pai_id){
+    macroId = catAtual.categoria_pai_id;
+  }
+  macroSel.value = macroId;
+  popularDtMicro(categoriaIdAtual);
+}
+
+function popularDtMicro(categoriaIdAtual){
+  const macroId = document.getElementById('dt-cat-macro').value;
+  const wrap = document.getElementById('dt-micro-wrap');
+  const micros = categorias.filter(c => c.categoria_pai_id === macroId);
+  if(micros.length === 0){
+    wrap.style.display = 'none';
+  } else {
+    wrap.style.display = 'block';
+    fillSelect(document.getElementById('dt-cat-micro'), micros, c => c.nome);
+    const catAtual = categorias.find(c => c.id === categoriaIdAtual);
+    if(catAtual && catAtual.categoria_pai_id === macroId){
+      document.getElementById('dt-cat-micro').value = categoriaIdAtual;
+    }
+  }
+}
+
+function onDtFluxoChange(){
+  popularDtMacro(document.getElementById('dt-fluxo').value, null);
+}
+
+function onDtMacroChange(){
+  popularDtMicro(null);
+}
+
+function showMsgDetalhe(text, type){
+  const m = document.getElementById('msg-detalhe');
+  m.textContent = text;
+  m.className = type;
+}
+
+function combinarDataIso(dataStr, horaBaseIso){
+  const base = new Date(horaBaseIso);
+  const d = new Date(dataStr + 'T00:00:00');
+  d.setHours(base.getHours(), base.getMinutes(), base.getSeconds());
+  return d.toISOString();
+}
+
+async function salvarEdicaoLancamento(){
+  if(!detalheLancamentoId) return;
+
+  const valor = parseValor(document.getElementById('dt-valor').value);
+  if(!valor || valor <= 0){
+    showMsgDetalhe('Informa um valor válido.', 'err');
+    return;
+  }
+  const fluxo = document.getElementById('dt-fluxo').value;
+  const microVisible = document.getElementById('dt-micro-wrap').style.display !== 'none';
+  const categoriaId = microVisible ? document.getElementById('dt-cat-micro').value : document.getElementById('dt-cat-macro').value;
+  const contaId = document.getElementById('dt-conta').value;
+  const moeda = document.getElementById('dt-moeda').value;
+  const dono = document.getElementById('dt-dono').value;
+  const dataStr = document.getElementById('dt-data').value;
+  const obs = document.getElementById('dt-obs').value || null;
+
+  if(!categoriaId || !contaId || !dataStr){
+    showMsgDetalhe('Preenche categoria, conta e data.', 'err');
+    return;
+  }
+
+  if(!validarTravaCasa(categoriaId, dono)){
+    showMsgDetalhe('Esse grupo/subgrupo é da Casa — muda a Categoria pra Casa ou escolhe outro.', 'err');
+    return;
+  }
+
+  const original = lancamentosTodos.find(l => l.id === detalheLancamentoId);
+  const dataHoraIso = combinarDataIso(dataStr, original.data_hora);
+
+  const btnSalvar = document.getElementById('btn-salvar-detalhe');
+  const btnExcluir = document.getElementById('btn-excluir-detalhe');
+  btnSalvar.disabled = true;
+  btnExcluir.disabled = true;
+  showMsgDetalhe('Salvando...', '');
+
+  const { error } = await sb.from('lancamentos').update({
+    fluxo: fluxo,
+    valor: valor,
+    categoria_id: categoriaId,
+    conta_id: contaId,
+    moeda: moeda,
+    dono: dono,
+    data_hora: dataHoraIso,
+    observacao: obs
+  }).eq('id', detalheLancamentoId);
+
+  btnSalvar.disabled = false;
+  btnExcluir.disabled = false;
+
+  if(error){
+    showMsgDetalhe('Erro ao salvar: ' + error.message, 'err');
+  } else {
+    showMsgDetalhe('Lançamento atualizado!', 'ok');
+    resumoCarregado = false;
+    lancamentosCarregados = false;
+    setTimeout(() => {
+      fecharDetalheLancamento();
+      carregarLancamentos();
+    }, 500);
+  }
+}
+
+async function excluirLancamento(){
+  if(!detalheLancamentoId) return;
+  if(!confirm('Excluir esse lançamento? Essa ação não pode ser desfeita.')) return;
+
+  const btnSalvar = document.getElementById('btn-salvar-detalhe');
+  const btnExcluir = document.getElementById('btn-excluir-detalhe');
+  btnSalvar.disabled = true;
+  btnExcluir.disabled = true;
+  showMsgDetalhe('Excluindo...', '');
+
+  const { error } = await sb.from('lancamentos').delete().eq('id', detalheLancamentoId);
+
+  btnSalvar.disabled = false;
+  btnExcluir.disabled = false;
+
+  if(error){
+    showMsgDetalhe('Erro ao excluir: ' + error.message, 'err');
+  } else {
+    resumoCarregado = false;
+    lancamentosCarregados = false;
+    fecharDetalheLancamento();
+    carregarLancamentos();
+  }
 }
 
 // ---------- Treinos ----------
