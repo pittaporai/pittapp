@@ -62,6 +62,27 @@
   .sub-linha{display:flex;justify-content:space-between;padding:8px 4px;font-size:13px;color:var(--gray2);cursor:default;}
   .sub-linha:not(:last-child){border-bottom:1px solid rgba(255,255,255,.05);}
 
+  /* DRE (Análise) — 3 níveis navegáveis: Entrada/Saída > Grupo > Subgrupo */
+  .dre-resultado{background:var(--panel-2);border-radius:12px;padding:14px 18px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;}
+  .dre-resultado .grupo-nome{color:var(--gray2);}
+  .dre-resultado .grupo-valor{color:var(--orange);}
+  .dre-l1-head{display:flex;justify-content:space-between;align-items:flex-start;padding:16px 18px;cursor:pointer;}
+  .dre-l1-info{flex:1;min-width:0;}
+  .dre-l1-meta{font-size:11px;color:var(--muted);margin-top:3px;}
+  .dre-l2{background:rgba(232,98,44,0.06);border-radius:8px;margin-top:8px;overflow:hidden;}
+  .dre-l2-head{display:flex;justify-content:space-between;align-items:flex-start;padding:10px 12px;cursor:pointer;}
+  .dre-l2-nome{font-size:13.5px;font-weight:600;color:var(--gray2);}
+  .dre-l2-valor{font-size:13.5px;font-weight:700;}
+  .dre-l2-meta{font-size:10.5px;color:var(--muted);margin-top:2px;}
+  .dre-l2 .chev{font-size:11px;}
+  .dre-l2-sub{display:none;padding:0 10px 8px 18px;}
+  .dre-l2.aberto .dre-l2-sub{display:block;}
+  .dre-l2.aberto .chev{transform:rotate(90deg);}
+  .dre-l3{padding:6px 4px;font-size:12.5px;color:var(--gray2);}
+  .dre-l3:not(:last-child){border-bottom:1px solid rgba(255,255,255,.05);}
+  .dre-l3-linha{display:flex;justify-content:space-between;}
+  .dre-l3-meta{font-size:10px;color:var(--muted);margin-top:1px;}
+
   .r-hint{font-size:11px;color:#5f5e5a;margin-top:16px;text-align:center;}
 
   .screen{display:none;}
@@ -85,6 +106,8 @@
   .menu-drawer.active{transform:translateX(0);}
   .menu-title{font-size:18px;margin:0 0 22px;}
   .menu-nav{display:flex;flex-direction:column;gap:2px;}
+  .menu-section{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:16px 0 4px;padding-left:10px;}
+  .menu-section:first-child{margin-top:0;}
   .menu-nav button{text-align:left;background:none;border:none;color:var(--text);font-size:15px;padding:12px 10px;border-radius:8px;cursor:pointer;}
   .menu-nav button.active{background:var(--panel-2);color:var(--orange);font-weight:600;}
   .menu-nav button:active{background:var(--panel-2);}
@@ -181,14 +204,22 @@
   <div id="menu-drawer" class="menu-drawer">
     <h2 class="menu-title">PittApp</h2>
     <nav class="menu-nav">
-      <button id="menu-btn-lancar" class="active" onclick="irParaView('lancar')">💵 Lançar</button>
+      <p class="menu-section">Resumos</p>
       <button id="menu-btn-resumo" onclick="irParaView('resumo')">💵 Resumo</button>
-      <button id="menu-btn-lancamentos" onclick="irParaView('lancamentos')">💵 Lançamentos</button>
-      <button id="menu-btn-treinos" onclick="irParaView('treinos')">💪 Treinos</button>
-      <button id="menu-btn-analise" onclick="irParaView('analise')">💪 Análise Treinos</button>
-      <button id="menu-btn-ativos" onclick="irParaView('ativos')">📈 Ativos</button>
-      <button id="menu-btn-posicao" onclick="irParaView('posicao')">📈 Posição</button>
-      <button id="menu-btn-historico" onclick="irParaView('historico')">📈 Histórico</button>
+      <button id="menu-btn-dre" onclick="irParaView('dre')">📊 Análise</button>
+      <button id="menu-btn-posicao" onclick="irParaView('posicao')">📈 Investimentos</button>
+      <button id="menu-btn-analise" onclick="irParaView('analise')">💪 Treinos</button>
+
+      <p class="menu-section">Lançar</p>
+      <button id="menu-btn-lancar" class="active" onclick="irParaView('lancar')">💵 Lançar</button>
+      <button id="menu-btn-ativos" onclick="irParaView('ativos')">📈 Lançar Investimentos</button>
+      <button id="menu-btn-treinos" onclick="irParaView('treinos')">💪 Lançar Treinos</button>
+
+      <p class="menu-section">Histórico</p>
+      <button id="menu-btn-lancamentos" onclick="irParaView('lancamentos')">💵 Histórico Lançamentos</button>
+      <button id="menu-btn-historico" onclick="irParaView('historico')">📈 Histórico Investimentos</button>
+
+      <p class="menu-section">Ajustes</p>
       <button id="menu-btn-ajustes" onclick="irParaView('ajustes')">⚙️ Ajustes</button>
     </nav>
     <p class="menu-hint">Mais ajustes em breve: gerenciar grupos/subgrupos, reclassificar lançamentos em massa.</p>
@@ -430,9 +461,22 @@
     </div>
   </div>
 
+  <div id="view-dre" class="view">
+    <div class="card">
+      <h1 class="r-title">Análise</h1>
+      <p class="sub" style="text-align:center;margin-top:-14px;">DRE — Orçado x Realizado (2026)</p>
+      <div id="dre-resultado" class="dre-resultado">
+        <span class="grupo-nome">Resultado</span>
+        <span class="grupo-valor">...</span>
+      </div>
+      <div id="dre-lista"></div>
+      <p class="r-hint">Toque em Entrada/Saída ou num grupo pra abrir os detalhes. Valores importados do orçamento — Realizado ainda é um retrato do arquivo, não ao vivo.</p>
+    </div>
+  </div>
+
   <div id="view-lancamentos" class="view">
     <div class="card">
-      <h1>Lançamentos</h1>
+      <h1>Histórico Lançamentos</h1>
       <p class="sub">Consulta e filtro</p>
 
       <div class="field">
@@ -737,7 +781,7 @@
 
   <div id="view-historico" class="view">
     <div class="card">
-      <h1>Histórico</h1>
+      <h1>Histórico Investimentos</h1>
       <p class="sub">Lançamentos de FIIs e Ações</p>
 
       <div class="field">
@@ -820,6 +864,7 @@ let treinosRealizadosCarregado = false;
 let treinosRealizadosTodos = [];
 let treinosSelecionadosEdicao = [''];
 let detalheTreinoId = null;
+let dreCarregado = false;
 
 const MOEDAS = ['BRL', 'USD', 'CLP', 'ARS', 'EUR'];
 
@@ -833,6 +878,7 @@ function irParaView(nome){
   document.getElementById('view-' + nome).classList.add('active');
   document.getElementById('menu-btn-lancar').classList.toggle('active', nome === 'lancar');
   document.getElementById('menu-btn-resumo').classList.toggle('active', nome === 'resumo');
+  document.getElementById('menu-btn-dre').classList.toggle('active', nome === 'dre');
   document.getElementById('menu-btn-lancamentos').classList.toggle('active', nome === 'lancamentos');
   document.getElementById('menu-btn-treinos').classList.toggle('active', nome === 'treinos');
   document.getElementById('menu-btn-analise').classList.toggle('active', nome === 'analise');
@@ -842,6 +888,9 @@ function irParaView(nome){
   document.getElementById('menu-btn-ajustes').classList.toggle('active', nome === 'ajustes');
   if(nome === 'resumo' && !resumoCarregado){
     carregarResumo();
+  }
+  if(nome === 'dre' && !dreCarregado){
+    carregarDRE();
   }
   if(nome === 'lancamentos' && !lancamentosCarregados){
     carregarLancamentos();
@@ -1354,6 +1403,93 @@ async function carregarResumo(){
 
 function toggleGrupo(i){
   document.getElementById('grupo' + i).classList.toggle('aberto');
+}
+
+// ---------- Análise (DRE Orçado x Realizado) ----------
+
+function corDelta(delta){
+  return delta >= 0 ? 'var(--green)' : 'var(--red)';
+}
+
+function metaDre(orcado, orcadoYtd, delta){
+  return 'Orçado: ' + fmt(orcado) + ' · Orçado YTD: ' + fmt(orcadoYtd) + ' · Δ YTD: ' + fmt(delta);
+}
+
+async function carregarDRE(){
+  const resultadoEl = document.getElementById('dre-resultado');
+  const listaEl = document.getElementById('dre-lista');
+  listaEl.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:20px 0;">Carregando...</p>';
+
+  const { data, error } = await sb.from('orcamento_dre').select('*').eq('ano', 2026).order('codigo');
+
+  if(error){
+    listaEl.innerHTML = '<p style="color:var(--red);font-size:13px;">Erro: ' + error.message + '</p>';
+    return;
+  }
+
+  const resultado = data.find(r => r.nivel === 4);
+  if(resultado){
+    const delta = resultado.realizado - resultado.orcado_ytd;
+    resultadoEl.querySelector('.grupo-valor').textContent = fmt(resultado.realizado);
+    resultadoEl.querySelector('.grupo-valor').style.color = corDelta(delta);
+  }
+
+  const l1s = data.filter(r => r.nivel === 1);
+  const l2s = data.filter(r => r.nivel === 2);
+  const l3s = data.filter(r => r.nivel === 3);
+
+  listaEl.innerHTML = l1s.map((r1, i) => {
+    const delta1 = r1.realizado - r1.orcado_ytd;
+    const filhos2 = l2s.filter(r => r.codigo_pai === r1.codigo);
+    const corpoL2 = filhos2.map((r2, j) => {
+      const delta2 = r2.realizado - r2.orcado_ytd;
+      const filhos3 = l3s.filter(r => r.codigo_pai === r2.codigo);
+      const corpoL3 = filhos3.map(r3 => {
+        const delta3 = r3.realizado - r3.orcado_ytd;
+        return `<div class="dre-l3">
+          <div class="dre-l3-linha"><span>${r3.descricao}</span><span style="color:${corDelta(delta3)};font-weight:600;">${fmt(r3.realizado)}</span></div>
+          <div class="dre-l3-meta">${metaDre(r3.orcado, r3.orcado_ytd, delta3)}</div>
+        </div>`;
+      }).join('');
+      return `<div class="dre-l2" id="dre-l1-${i}-l2-${j}">
+        <div class="dre-l2-head" onclick="toggleDreL2(${i}, ${j})">
+          <div class="dre-l1-info">
+            <div class="dre-l2-nome">${r2.descricao}</div>
+            <div class="dre-l2-meta">${metaDre(r2.orcado, r2.orcado_ytd, delta2)}</div>
+          </div>
+          <span style="display:flex;align-items:center;">
+            <span class="dre-l2-valor" style="color:${corDelta(delta2)};">${fmt(r2.realizado)}</span>
+            <span class="chev">›</span>
+          </span>
+        </div>
+        <div class="dre-l2-sub">${corpoL3}</div>
+      </div>`;
+    }).join('');
+
+    return `<div class="grupo" id="dre-grupo${i}">
+      <div class="dre-l1-head" onclick="toggleDreL1(${i})">
+        <div class="dre-l1-info">
+          <div class="grupo-nome">${r1.descricao}</div>
+          <div class="dre-l1-meta">${metaDre(r1.orcado, r1.orcado_ytd, delta1)}</div>
+        </div>
+        <span style="display:flex;align-items:center;">
+          <span class="grupo-valor" style="color:${corDelta(delta1)};">${fmt(r1.realizado)}</span>
+          <span class="chev">›</span>
+        </span>
+      </div>
+      <div class="grupo-sub">${corpoL2}</div>
+    </div>`;
+  }).join('');
+
+  dreCarregado = true;
+}
+
+function toggleDreL1(i){
+  document.getElementById('dre-grupo' + i).classList.toggle('aberto');
+}
+
+function toggleDreL2(i, j){
+  document.getElementById('dre-l1-' + i + '-l2-' + j).classList.toggle('aberto');
 }
 
 // ---------- Lançamentos (consulta e filtro) ----------
