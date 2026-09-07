@@ -1155,7 +1155,7 @@ async function carregarDados(){
     showMsg('Erro ao carregar: ' + ((e1 && e1.message) || (e2 && e2.message)), 'err');
     return;
   }
-  categorias = cats;
+  categorias = cats.slice().sort((a, b) => a.nome.localeCompare(b.nome));
   fillSelect(document.getElementById('conta'), contas, c => c.nome);
   fillSelect(document.getElementById('conta-saida'), contas, c => c.nome);
   fillSelect(document.getElementById('conta-entrada'), contas, c => c.nome);
