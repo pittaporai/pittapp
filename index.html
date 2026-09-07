@@ -466,6 +466,13 @@
       <div id="r-grupos"></div>
       <p class="r-hint">Toque num grupo pra abrir as contas dele</p>
     </div>
+
+    <div class="card">
+      <h1 class="r-title">Patrimônio Michelle</h1>
+      <div id="r-total-michelle" class="r-total"></div>
+      <div id="r-grupos-michelle"></div>
+      <p class="r-hint">Toque num grupo pra abrir as contas dele</p>
+    </div>
   </div>
 
   <div id="view-dre" class="view">
@@ -961,6 +968,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let categorias = [];
 let fluxoAtual = 'entrada';
 let resumoCarregado = false;
+let patrimonioMichelleCarregado = false;
 let entradaEditadaManualmente = false;
 let lancamentosCarregados = false;
 let lancamentosTodos = [];
@@ -998,6 +1006,9 @@ function irParaView(nome){
   document.getElementById('menu-btn-ajustes-bancos').classList.toggle('active', nome === 'ajustes-bancos');
   if(nome === 'resumo' && !resumoCarregado){
     carregarResumo();
+  }
+  if(nome === 'resumo' && !patrimonioMichelleCarregado){
+    carregarPatrimonioMichelle();
   }
   if(nome === 'dre' && !dreCarregado){
     carregarDRE();
@@ -1393,7 +1404,7 @@ async function carregarResumo(){
   totalEl.textContent = '...';
   gruposEl.innerHTML = '';
 
-  const { data: contas, error: e1 } = await sb.from('contas').select('id, nome, ordem, grupo_resumo').eq('ativa', true).not('grupo_resumo', 'is', null).order('ordem');
+  const { data: contas, error: e1 } = await sb.from('contas').select('id, nome, ordem, grupo_resumo').eq('ativa', true).not('grupo_resumo', 'is', null).neq('titular', 'Michelle').order('ordem');
   const [cotacoes, posicaoAtivos] = await Promise.all([buscarCotacoes(), calcularPosicaoAtivos()]);
 
   // O Supabase limita cada consulta a 1000 linhas por padrão — com o histórico
@@ -1519,6 +1530,131 @@ async function carregarResumo(){
 
 function toggleGrupo(i){
   document.getElementById('grupo' + i).classList.toggle('aberto');
+}
+
+// ---------- Patrimônio Michelle (mesma lógica do Resumo, só que filtrado pelas contas dela) ----------
+
+async function carregarPatrimonioMichelle(){
+  const totalEl = document.getElementById('r-total-michelle');
+  const gruposEl = document.getElementById('r-grupos-michelle');
+  totalEl.textContent = '...';
+  gruposEl.innerHTML = '';
+
+  const { data: contas, error: e1 } = await sb.from('contas').select('id, nome, ordem, grupo_resumo').eq('ativa', true).not('grupo_resumo', 'is', null).eq('titular', 'Michelle').order('ordem');
+
+  let lancs = [];
+  let e2 = null;
+  const PAGE = 1000;
+  for(let from = 0; ; from += PAGE){
+    const { data: pagina, error: erroPagina } = await sb.from('lancamentos').select('conta_id, fluxo, valor, moeda').range(from, from + PAGE - 1);
+    if(erroPagina){ e2 = erroPagina; break; }
+    lancs = lancs.concat(pagina);
+    if(pagina.length < PAGE) break;
+  }
+
+  if(e1 || e2){
+    totalEl.textContent = 'erro';
+    gruposEl.innerHTML = '<p style="color:var(--red);font-size:13px;text-align:center;">' + ((e1 && e1.message) || (e2 && e2.message)) + '</p>';
+    return;
+  }
+
+  const cotacoes = await buscarCotacoes();
+
+  const saldoPorContaMoeda = {};
+  contas.forEach(c => { saldoPorContaMoeda[c.id] = {}; });
+  lancs.forEach(l => {
+    if(!(l.conta_id in saldoPorContaMoeda)) return;
+    const moeda = l.moeda || 'BRL';
+    const mapa = saldoPorContaMoeda[l.conta_id];
+    mapa[moeda] = (mapa[moeda] || 0) + (l.fluxo === 'entrada' ? 1 : -1) * Number(l.valor);
+  });
+
+  function taxaBRL(moeda){
+    return cotacoes[moeda] != null ? cotacoes[moeda] : 1;
+  }
+
+  const gruposMap = {};
+  const ordemGrupo = [];
+  contas.forEach(c => {
+    const nomeGrupo = c.grupo_resumo;
+    if(!gruposMap[nomeGrupo]){
+      gruposMap[nomeGrupo] = [];
+      ordemGrupo.push(nomeGrupo);
+    }
+    const mapaMoedas = saldoPorContaMoeda[c.id];
+    const moedas = Object.keys(mapaMoedas);
+    if(moedas.length === 0){
+      gruposMap[nomeGrupo].push({ conta: c.nome, moeda: 'BRL', saldo: 0 });
+    } else {
+      moedas.forEach(m => gruposMap[nomeGrupo].push({ conta: c.nome, moeda: m, saldo: mapaMoedas[m] }));
+    }
+  });
+
+  let totalGeral = 0;
+  Object.values(gruposMap).forEach(itens => {
+    itens.forEach(it => { totalGeral += it.saldo * taxaBRL(it.moeda); });
+  });
+  totalEl.textContent = fmt(totalGeral);
+  totalEl.style.color = 'var(--orange)';
+
+  if(ordemGrupo.length === 0){
+    gruposEl.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:12px 0;">Nenhuma conta da Michelle cadastrada ainda.</p>';
+    patrimonioMichelleCarregado = true;
+    return;
+  }
+
+  gruposEl.innerHTML = ordemGrupo.map((nomeGrupo, i) => {
+    const itens = gruposMap[nomeGrupo];
+    const totalGrupoBRL = itens.reduce((s, it) => s + it.saldo * taxaBRL(it.moeda), 0);
+    const corGrupo = totalGrupoBRL < 0 ? 'var(--red)' : 'var(--gray1)';
+
+    const porMoeda = {};
+    const ordemMoedas = [];
+    itens.forEach(it => {
+      if(!porMoeda[it.moeda]){ porMoeda[it.moeda] = []; ordemMoedas.push(it.moeda); }
+      porMoeda[it.moeda].push(it);
+    });
+    const multiMoeda = ordemMoedas.length > 1;
+
+    const corpoHtml = ordemMoedas.map(moeda => {
+      const contasDaMoeda = porMoeda[moeda];
+      const linhas = contasDaMoeda.map(it => {
+        const cor = it.saldo < 0 ? 'var(--red)' : 'var(--gray2)';
+        const tag = (!multiMoeda && it.moeda !== 'BRL') ? ' ' + tagMoeda(it.moeda) : '';
+        return `<div class="sub-linha"><span>${it.conta}${tag}</span><span style="color:${cor};font-weight:500;">${fmt(it.saldo)}</span></div>`;
+      }).join('');
+
+      if(!multiMoeda) return linhas;
+
+      const totalMoeda = contasDaMoeda.reduce((s, it) => s + it.saldo, 0);
+      return `
+        <div class="moeda-grupo">
+          <div class="moeda-total-linha">
+            <span>Total ${moeda}</span>
+            <span>${fmt(totalMoeda)}</span>
+          </div>
+          ${linhas}
+        </div>`;
+    }).join('');
+
+    return `
+      <div class="grupo" id="grupo-mi-${i}">
+        <div class="grupo-head" onclick="toggleGrupoMichelle(${i})">
+          <span class="grupo-nome">${nomeGrupo}</span>
+          <span style="display:flex;align-items:center;">
+            <span class="grupo-valor" style="color:${corGrupo};">${fmt(totalGrupoBRL)}</span>
+            <span class="chev">›</span>
+          </span>
+        </div>
+        <div class="grupo-sub">${corpoHtml}</div>
+      </div>`;
+  }).join('');
+
+  patrimonioMichelleCarregado = true;
+}
+
+function toggleGrupoMichelle(i){
+  document.getElementById('grupo-mi-' + i).classList.toggle('aberto');
 }
 
 // ---------- Análise (DRE Orçado x Realizado) ----------
