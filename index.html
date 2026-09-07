@@ -24,6 +24,13 @@
   .seg{position:relative;display:flex;background:var(--panel-2);border-radius:10px;padding:4px;margin-bottom:20px;}
   .thumb{position:absolute;top:4px;left:4px;width:calc((100% - 8px)/3);height:calc(100% - 8px);background:var(--orange);border-radius:7px;transition:transform .2s ease;}
   .seg button{position:relative;z-index:1;flex:1;border:none;background:transparent;padding:10px;border-radius:7px;font-size:13.5px;cursor:pointer;color:var(--muted);font-weight:600;}
+  .seg.seg-2 .thumb{width:calc((100% - 8px)/2);}
+  .icon-btn{background:none;border:none;font-size:14px;cursor:pointer;padding:2px 6px;line-height:1;}
+  .ag-sub-row{display:flex;justify-content:space-between;align-items:center;padding:10px 2px;border-bottom:1px solid var(--line);font-size:13.5px;}
+  .ag-sub-row:last-of-type{border-bottom:none;}
+  .ag-add-row{display:flex;gap:8px;margin-top:10px;align-items:center;}
+  .ag-add-row input{flex:1;}
+  .ag-add-row button{width:auto;white-space:nowrap;padding:11px 14px;}
   .subhead-mini{font-size:11.5px;color:var(--orange);font-weight:700;text-transform:uppercase;letter-spacing:0.04em;margin:16px 0 8px;}
   .subhead-mini:first-child{margin-top:0;}
   label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px;}
@@ -38,6 +45,8 @@
   #msg{margin-top:14px;font-size:13.5px;text-align:center;min-height:18px;}
   #msg.ok{color:var(--green);}
   #msg.err{color:var(--red);}
+  .ok{color:var(--green);font-size:13px;margin-top:8px;}
+  .err{color:var(--red);font-size:13px;margin-top:8px;}
 
   .r-title{font-size:20px;color:var(--gray1);margin:0 0 18px;text-align:center;}
   .r-total{text-align:center;margin-bottom:22px;font-size:34px;font-weight:600;}
@@ -216,7 +225,9 @@
       <button id="menu-btn-historico" onclick="irParaView('historico')">📈 Histórico Investimentos</button>
 
       <p class="menu-section">Ajustes</p>
-      <button id="menu-btn-ajustes" onclick="irParaView('ajustes')">⚙️ Ajustes</button>
+      <button id="menu-btn-ajustes" onclick="irParaView('ajustes')">📈 Editar FIIs e Ações</button>
+      <button id="menu-btn-ajustes-grupos" onclick="irParaView('ajustes-grupos')">🗂️ Editar Grupos</button>
+      <button id="menu-btn-ajustes-bancos" onclick="irParaView('ajustes-bancos')">🏢 Editar Bancos</button>
     </nav>
     <p class="menu-hint">Mais ajustes em breve: gerenciar grupos/subgrupos, reclassificar lançamentos em massa.</p>
   </div>
@@ -833,7 +844,7 @@
   <div id="view-ajustes" class="view">
     <div class="card">
       <h1>PittApp</h1>
-      <p class="sub">Ajustes</p>
+      <p class="sub">📈 Editar FIIs e Ações</p>
 
       <p class="subhead-mini">FIIs e Ações cadastrados</p>
       <div id="ajustes-tickers-lista"></div>
@@ -851,6 +862,89 @@
       </div>
       <button class="submit" onclick="cadastrarTicker()">Cadastrar</button>
       <div id="msg-ajustes"></div>
+    </div>
+  </div>
+
+  <div id="view-ajustes-grupos" class="view">
+    <div class="card">
+      <h1>PittApp</h1>
+      <p class="sub">🗂️ Editar Grupos</p>
+
+      <div class="seg seg-2" id="ag-fluxo-seg">
+        <div class="thumb" id="ag-fluxo-thumb"></div>
+        <button id="ag-btn-entrada" type="button" onclick="setFluxoAjustesGrupos('entrada')">Entrada</button>
+        <button id="ag-btn-saida" type="button" onclick="setFluxoAjustesGrupos('saida')">Saída</button>
+      </div>
+
+      <div id="ag-grupos-lista"></div>
+
+      <p class="subhead-mini">Criar novo grupo</p>
+      <div class="lf-row">
+        <div class="field" style="flex:1;">
+          <label>Nome do grupo</label>
+          <input id="ag-novo-grupo-nome" type="text" placeholder="Ex: Educação" />
+        </div>
+      </div>
+      <button class="submit" onclick="criarGrupo()">Criar Grupo</button>
+      <div id="msg-ajustes-grupos"></div>
+
+      <p class="subhead-mini">Substituir Grupo (mover lançamentos)</p>
+      <p class="r-hint" style="margin-top:-6px;">Move todos os lançamentos de um grupo/subgrupo pra outro. Use antes de excluir um grupo que ainda tem lançamentos.</p>
+
+      <div class="seg seg-2" id="sub-fluxo-seg">
+        <div class="thumb" id="sub-fluxo-thumb"></div>
+        <button id="sub-btn-entrada" type="button" onclick="setFluxoSubstituir('entrada')">Entrada</button>
+        <button id="sub-btn-saida" type="button" onclick="setFluxoSubstituir('saida')">Saída</button>
+      </div>
+
+      <p class="subhead-mini" style="color:var(--gray2);">De</p>
+      <div class="field">
+        <label>Grupo</label>
+        <select id="sub-de-grupo" onchange="renderSubSelect('de')"></select>
+      </div>
+      <div class="field">
+        <label>Subgrupo</label>
+        <select id="sub-de-subgrupo"></select>
+      </div>
+
+      <p class="subhead-mini" style="color:var(--gray2);">Para</p>
+      <div class="field">
+        <label>Grupo</label>
+        <select id="sub-para-grupo" onchange="renderSubSelect('para')"></select>
+      </div>
+      <div class="field">
+        <label>Subgrupo</label>
+        <select id="sub-para-subgrupo"></select>
+      </div>
+
+      <button class="submit" onclick="substituirGrupo()">Mover Lançamentos</button>
+      <div id="msg-substituir"></div>
+    </div>
+  </div>
+
+  <div id="view-ajustes-bancos" class="view">
+    <div class="card">
+      <h1>PittApp</h1>
+      <p class="sub">🏢 Editar Bancos</p>
+
+      <p class="subhead-mini">Bancos/Contas cadastrados</p>
+      <div id="ajustes-bancos-lista"></div>
+
+      <p class="subhead-mini">Cadastrar novo</p>
+      <div class="field">
+        <label>Nome do banco/conta</label>
+        <input id="novo-banco-nome" type="text" placeholder="Ex: Nubank Michelle" />
+      </div>
+      <div class="field">
+        <label>Aparece no Resumo como</label>
+        <select id="novo-banco-grupo-resumo">
+          <option value="Caixa líquido">Caixa líquido</option>
+          <option value="Investimentos">Investimentos</option>
+          <option value="">— não mostrar no Resumo —</option>
+        </select>
+      </div>
+      <button class="submit" onclick="cadastrarBanco()">Cadastrar</button>
+      <div id="msg-ajustes-bancos"></div>
     </div>
   </div>
 
@@ -900,6 +994,8 @@ function irParaView(nome){
   document.getElementById('menu-btn-posicao').classList.toggle('active', nome === 'posicao');
   document.getElementById('menu-btn-historico').classList.toggle('active', nome === 'historico');
   document.getElementById('menu-btn-ajustes').classList.toggle('active', nome === 'ajustes');
+  document.getElementById('menu-btn-ajustes-grupos').classList.toggle('active', nome === 'ajustes-grupos');
+  document.getElementById('menu-btn-ajustes-bancos').classList.toggle('active', nome === 'ajustes-bancos');
   if(nome === 'resumo' && !resumoCarregado){
     carregarResumo();
   }
@@ -923,6 +1019,12 @@ function irParaView(nome){
   }
   if(nome === 'ajustes'){
     carregarAjustesTickers();
+  }
+  if(nome === 'ajustes-grupos'){
+    carregarAjustesGrupos();
+  }
+  if(nome === 'ajustes-bancos'){
+    carregarAjustesBancos();
   }
   fecharMenu();
 }
@@ -3026,6 +3128,381 @@ async function excluirTicker(ticker){
   showMsgAjustes(ticker + ' excluído.', 'ok');
   carregarAjustesTickers();
   carregarTickersConhecidos();
+}
+
+// ---------- Ajustes: Editar Grupos ----------
+
+function escJs(str){
+  return String(str == null ? '' : str).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
+let ajustesGruposFluxo = 'entrada';
+let substituirFluxo = 'entrada';
+let agCategorias = [];
+let agAbertos = new Set();
+
+function showMsgAjustesGrupos(text, type){
+  const m = document.getElementById('msg-ajustes-grupos');
+  m.textContent = text;
+  m.className = type;
+}
+
+function showMsgSubstituir(text, type){
+  const m = document.getElementById('msg-substituir');
+  m.textContent = text;
+  m.className = type;
+}
+
+async function carregarAjustesGrupos(){
+  const listaEl = document.getElementById('ag-grupos-lista');
+  listaEl.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:12px 0;">Carregando...</p>';
+
+  const { data, error } = await sb.from('categorias').select('id, fluxo, nome, categoria_pai_id, codigo, grupo').eq('ativa', true).order('codigo');
+  if(error){
+    listaEl.innerHTML = '<p style="color:var(--red);font-size:13px;">Erro: ' + error.message + '</p>';
+    return;
+  }
+  agCategorias = data;
+  setFluxoAjustesGrupos(ajustesGruposFluxo);
+  setFluxoSubstituir(substituirFluxo);
+}
+
+function setFluxoAjustesGrupos(tipo){
+  ajustesGruposFluxo = tipo;
+  agAbertos = new Set();
+  const thumb = document.getElementById('ag-fluxo-thumb');
+  const e = document.getElementById('ag-btn-entrada'), s = document.getElementById('ag-btn-saida');
+  thumb.style.transform = 'translateX(' + (tipo === 'entrada' ? '0%' : '100%') + ')';
+  e.style.color = tipo === 'entrada' ? '#fff' : '';
+  s.style.color = tipo === 'saida' ? '#fff' : '';
+  renderAjustesGrupos();
+}
+
+function renderAjustesGrupos(){
+  const listaEl = document.getElementById('ag-grupos-lista');
+  const grupos = agCategorias.filter(c => c.fluxo === ajustesGruposFluxo && c.categoria_pai_id === null)
+    .sort((a, b) => a.nome.localeCompare(b.nome));
+
+  if(grupos.length === 0){
+    listaEl.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:12px 0;">Nenhum grupo cadastrado.</p>';
+    return;
+  }
+
+  listaEl.innerHTML = grupos.map((g, i) => {
+    const subs = agCategorias.filter(c => c.categoria_pai_id === g.id).sort((a, b) => a.nome.localeCompare(b.nome));
+    const subsHtml = subs.length ? subs.map(s => `
+      <div class="ag-sub-row">
+        <span>${s.nome}</span>
+        <span style="display:flex;align-items:center;">
+          <button class="icon-btn" onclick="event.stopPropagation();renomearSubgrupo('${s.id}','${escJs(s.nome)}')">✏️</button>
+          <button class="del" onclick="event.stopPropagation();excluirSubgrupo('${s.id}','${escJs(s.nome)}')">Excluir</button>
+        </span>
+      </div>`).join('') : '<p style="color:var(--muted);font-size:12.5px;padding:6px 2px;">Sem subgrupos.</p>';
+
+    return `
+      <div class="grupo" id="ag-grupo-${i}">
+        <div class="grupo-head" onclick="toggleAjusteGrupo(${i})">
+          <span class="grupo-nome">${g.nome}</span>
+          <span style="display:flex;align-items:center;">
+            <button class="icon-btn" onclick="event.stopPropagation();renomearGrupo('${g.id}','${escJs(g.nome)}')">✏️</button>
+            <button class="icon-btn" onclick="event.stopPropagation();excluirGrupo('${g.id}','${escJs(g.nome)}')">🗑️</button>
+            <span class="chev">›</span>
+          </span>
+        </div>
+        <div class="grupo-sub">
+          ${subsHtml}
+          <div class="ag-add-row">
+            <input id="ag-novo-sub-${i}" placeholder="Novo subgrupo..." />
+            <button class="submit" onclick="criarSubgrupo('${g.id}', ${i})">+ Adicionar</button>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+
+  agAbertos.forEach(i => {
+    const el = document.getElementById('ag-grupo-' + i);
+    if(el) el.classList.add('aberto');
+  });
+}
+
+function toggleAjusteGrupo(i){
+  const el = document.getElementById('ag-grupo-' + i);
+  el.classList.toggle('aberto');
+  if(el.classList.contains('aberto')) agAbertos.add(i); else agAbertos.delete(i);
+}
+
+function proximoCodigoGrupo(fluxo){
+  const prefix = fluxo === 'entrada' ? 1 : 2;
+  let max = 0;
+  agCategorias.filter(c => c.fluxo === fluxo && c.categoria_pai_id === null).forEach(g => {
+    const partes = (g.codigo || '').split('.');
+    if(partes.length === 2 && Number(partes[0]) === prefix){
+      const n = Number(partes[1]);
+      if(!isNaN(n) && n > max) max = n;
+    }
+  });
+  return prefix + '.' + (max + 1);
+}
+
+function proximoCodigoSubgrupo(grupo){
+  let max = 0;
+  agCategorias.filter(c => c.categoria_pai_id === grupo.id).forEach(s => {
+    const partes = (s.codigo || '').split('.');
+    const n = Number(partes[partes.length - 1]);
+    if(!isNaN(n) && n > max) max = n;
+  });
+  return (grupo.codigo || '0') + '.' + (max + 1);
+}
+
+async function criarGrupo(){
+  const input = document.getElementById('ag-novo-grupo-nome');
+  const nome = input.value.trim();
+  if(!nome){
+    showMsgAjustesGrupos('Informa o nome do grupo.', 'err');
+    return;
+  }
+  const codigo = proximoCodigoGrupo(ajustesGruposFluxo);
+  const { error } = await sb.from('categorias').insert([{ fluxo: ajustesGruposFluxo, nome: nome, grupo: nome, categoria_pai_id: null, codigo: codigo }]);
+  if(error){
+    showMsgAjustesGrupos('Erro: ' + error.message, 'err');
+    return;
+  }
+  showMsgAjustesGrupos('Grupo criado!', 'ok');
+  input.value = '';
+  await carregarAjustesGrupos();
+  await carregarDados();
+}
+
+async function criarSubgrupo(grupoId, i){
+  const input = document.getElementById('ag-novo-sub-' + i);
+  const nome = input.value.trim();
+  if(!nome) return;
+  const grupo = agCategorias.find(c => c.id === grupoId);
+  const codigo = proximoCodigoSubgrupo(grupo);
+  agAbertos.add(i);
+  const { error } = await sb.from('categorias').insert([{ fluxo: grupo.fluxo, nome: nome, grupo: grupo.nome, categoria_pai_id: grupoId, codigo: codigo }]);
+  if(error){
+    alert('Erro: ' + error.message);
+    return;
+  }
+  await carregarAjustesGrupos();
+  await carregarDados();
+}
+
+async function renomearGrupo(id, nomeAtual){
+  const novo = prompt('Novo nome do grupo:', nomeAtual);
+  if(novo === null) return;
+  const novoTrim = novo.trim();
+  if(!novoTrim || novoTrim === nomeAtual) return;
+
+  const { error } = await sb.from('categorias').update({ nome: novoTrim, grupo: novoTrim }).eq('id', id);
+  if(error){ alert('Erro: ' + error.message); return; }
+  await sb.from('categorias').update({ grupo: novoTrim }).eq('categoria_pai_id', id);
+  await carregarAjustesGrupos();
+  await carregarDados();
+}
+
+async function renomearSubgrupo(id, nomeAtual){
+  const novo = prompt('Novo nome do subgrupo:', nomeAtual);
+  if(novo === null) return;
+  const novoTrim = novo.trim();
+  if(!novoTrim || novoTrim === nomeAtual) return;
+
+  const { error } = await sb.from('categorias').update({ nome: novoTrim }).eq('id', id);
+  if(error){ alert('Erro: ' + error.message); return; }
+  await carregarAjustesGrupos();
+  await carregarDados();
+}
+
+async function excluirGrupo(id, nome){
+  const { count: countSub, error: e1 } = await sb.from('categorias').select('id', { count: 'exact', head: true }).eq('categoria_pai_id', id);
+  if(e1){ alert('Erro ao verificar: ' + e1.message); return; }
+  if(countSub > 0){
+    alert('"' + nome + '" ainda tem ' + countSub + ' subgrupo(s) — exclua ou mova eles primeiro.');
+    return;
+  }
+  const { count: countLanc, error: e2 } = await sb.from('lancamentos').select('id', { count: 'exact', head: true }).eq('categoria_id', id);
+  if(e2){ alert('Erro ao verificar: ' + e2.message); return; }
+  if(countLanc > 0){
+    alert('"' + nome + '" tem ' + countLanc + ' lançamento(s) vinculado(s) — use o Substituir Grupo pra mover antes de excluir.');
+    return;
+  }
+  if(!confirm('Excluir o grupo "' + nome + '"?')) return;
+
+  const { error } = await sb.from('categorias').delete().eq('id', id);
+  if(error){ alert('Erro ao excluir: ' + error.message); return; }
+  await carregarAjustesGrupos();
+  await carregarDados();
+}
+
+async function excluirSubgrupo(id, nome){
+  const { count, error: e1 } = await sb.from('lancamentos').select('id', { count: 'exact', head: true }).eq('categoria_id', id);
+  if(e1){ alert('Erro ao verificar: ' + e1.message); return; }
+  if(count > 0){
+    alert('"' + nome + '" tem ' + count + ' lançamento(s) vinculado(s) — use o Substituir Grupo pra mover antes de excluir.');
+    return;
+  }
+  if(!confirm('Excluir o subgrupo "' + nome + '"?')) return;
+
+  const { error } = await sb.from('categorias').delete().eq('id', id);
+  if(error){ alert('Erro ao excluir: ' + error.message); return; }
+  await carregarAjustesGrupos();
+  await carregarDados();
+}
+
+// ---------- Ajustes: Substituir Grupo ----------
+
+function setFluxoSubstituir(tipo){
+  substituirFluxo = tipo;
+  const thumb = document.getElementById('sub-fluxo-thumb');
+  const e = document.getElementById('sub-btn-entrada'), s = document.getElementById('sub-btn-saida');
+  thumb.style.transform = 'translateX(' + (tipo === 'entrada' ? '0%' : '100%') + ')';
+  e.style.color = tipo === 'entrada' ? '#fff' : '';
+  s.style.color = tipo === 'saida' ? '#fff' : '';
+  renderSubGrupoSelects();
+}
+
+function renderSubGrupoSelects(){
+  const grupos = agCategorias.filter(c => c.fluxo === substituirFluxo && c.categoria_pai_id === null)
+    .sort((a, b) => a.nome.localeCompare(b.nome));
+  const optsHtml = grupos.map(g => `<option value="${g.id}">${g.nome}</option>`).join('');
+  document.getElementById('sub-de-grupo').innerHTML = optsHtml;
+  document.getElementById('sub-para-grupo').innerHTML = optsHtml;
+  renderSubSelect('de');
+  renderSubSelect('para');
+}
+
+function renderSubSelect(lado){
+  const grupoSel = document.getElementById('sub-' + lado + '-grupo');
+  const subSel = document.getElementById('sub-' + lado + '-subgrupo');
+  const grupoId = grupoSel.value;
+  const subs = agCategorias.filter(c => c.categoria_pai_id === grupoId).sort((a, b) => a.nome.localeCompare(b.nome));
+  let html = '<option value="' + grupoId + '">— (grupo, sem subgrupo) —</option>';
+  html += subs.map(s => `<option value="${s.id}">${s.nome}</option>`).join('');
+  subSel.innerHTML = html;
+}
+
+async function substituirGrupo(){
+  const deId = document.getElementById('sub-de-subgrupo').value;
+  const paraId = document.getElementById('sub-para-subgrupo').value;
+
+  if(!deId || !paraId){
+    showMsgSubstituir('Selecione origem e destino.', 'err');
+    return;
+  }
+  if(deId === paraId){
+    showMsgSubstituir('Origem e destino são iguais.', 'err');
+    return;
+  }
+
+  const { count, error: e1 } = await sb.from('lancamentos').select('id', { count: 'exact', head: true }).eq('categoria_id', deId);
+  if(e1){ showMsgSubstituir('Erro ao verificar: ' + e1.message, 'err'); return; }
+  if(!count || count === 0){
+    showMsgSubstituir('Não há lançamentos nessa origem.', 'err');
+    return;
+  }
+  if(!confirm('Mover ' + count + ' lançamento(s) pro novo grupo/subgrupo?')) return;
+
+  showMsgSubstituir('Movendo...', '');
+  const { error } = await sb.from('lancamentos').update({ categoria_id: paraId }).eq('categoria_id', deId);
+  if(error){
+    showMsgSubstituir('Erro ao mover: ' + error.message, 'err');
+    return;
+  }
+  showMsgSubstituir(count + ' lançamento(s) movido(s) com sucesso!', 'ok');
+}
+
+// ---------- Ajustes: Editar Bancos ----------
+
+let agContas = [];
+
+function showMsgAjustesBancos(text, type){
+  const m = document.getElementById('msg-ajustes-bancos');
+  m.textContent = text;
+  m.className = type;
+}
+
+async function carregarAjustesBancos(){
+  const listaEl = document.getElementById('ajustes-bancos-lista');
+  listaEl.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:12px 0;">Carregando...</p>';
+
+  const { data, error } = await sb.from('contas').select('id, nome, ativa, ordem, grupo_resumo').eq('ativa', true).order('ordem');
+  if(error){
+    listaEl.innerHTML = '<p style="color:var(--red);font-size:13px;">Erro: ' + error.message + '</p>';
+    return;
+  }
+  agContas = data;
+  renderAjustesBancos();
+}
+
+function renderAjustesBancos(){
+  const listaEl = document.getElementById('ajustes-bancos-lista');
+  if(agContas.length === 0){
+    listaEl.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:12px 0;">Nenhum banco cadastrado.</p>';
+    return;
+  }
+  listaEl.innerHTML = agContas.map(c => `
+    <div class="ticker-item">
+      <span style="display:flex;flex-direction:column;gap:2px;">
+        <span>${c.nome}</span>
+        <span style="color:var(--muted);font-size:11px;">${c.grupo_resumo || 'Não aparece no Resumo'}</span>
+      </span>
+      <span style="display:flex;align-items:center;">
+        <button class="icon-btn" onclick="renomearBanco('${c.id}','${escJs(c.nome)}','${escJs(c.grupo_resumo || '')}')">✏️</button>
+        <button class="del" onclick="excluirBanco('${c.id}','${escJs(c.nome)}')">Excluir</button>
+      </span>
+    </div>`).join('');
+}
+
+async function cadastrarBanco(){
+  const input = document.getElementById('novo-banco-nome');
+  const nome = input.value.trim();
+  const grupoResumo = document.getElementById('novo-banco-grupo-resumo').value || null;
+
+  if(!nome){
+    showMsgAjustesBancos('Informa o nome do banco/conta.', 'err');
+    return;
+  }
+  const maxOrdem = agContas.reduce((m, c) => Math.max(m, c.ordem || 0), 0);
+  const { error } = await sb.from('contas').insert([{ nome: nome, grupo_resumo: grupoResumo, ordem: maxOrdem + 1, ativa: true }]);
+  if(error){
+    showMsgAjustesBancos('Erro: ' + error.message, 'err');
+    return;
+  }
+  showMsgAjustesBancos('Banco cadastrado!', 'ok');
+  input.value = '';
+  await carregarAjustesBancos();
+  await carregarDados();
+}
+
+async function renomearBanco(id, nomeAtual, grupoAtual){
+  const novoNome = prompt('Nome do banco/conta:', nomeAtual);
+  if(novoNome === null) return;
+  const novoNomeTrim = novoNome.trim();
+  if(!novoNomeTrim) return;
+
+  const novoGrupo = prompt('Aparece no Resumo como ("Caixa líquido", "Investimentos" ou em branco pra não aparecer):', grupoAtual);
+  if(novoGrupo === null) return;
+
+  const { error } = await sb.from('contas').update({ nome: novoNomeTrim, grupo_resumo: novoGrupo.trim() || null }).eq('id', id);
+  if(error){ alert('Erro: ' + error.message); return; }
+  await carregarAjustesBancos();
+  await carregarDados();
+}
+
+async function excluirBanco(id, nome){
+  const { count, error: e1 } = await sb.from('lancamentos').select('id', { count: 'exact', head: true }).eq('conta_id', id);
+  if(e1){ alert('Erro ao verificar: ' + e1.message); return; }
+  if(count > 0){
+    alert('"' + nome + '" tem ' + count + ' lançamento(s) vinculado(s) — não dá pra excluir.');
+    return;
+  }
+  if(!confirm('Excluir o banco/conta "' + nome + '"?')) return;
+
+  const { error } = await sb.from('contas').delete().eq('id', id);
+  if(error){ alert('Erro ao excluir: ' + error.message); return; }
+  await carregarAjustesBancos();
+  await carregarDados();
 }
 
 iniciar();
