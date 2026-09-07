@@ -460,15 +460,15 @@
   </div>
 
   <div id="view-resumo" class="view">
-    <div class="card">
+    <div class="card" id="card-patrimonio-matheus">
       <h1 class="r-title">Patrimônio</h1>
       <div id="r-total" class="r-total"></div>
       <div id="r-grupos"></div>
       <p class="r-hint">Toque num grupo pra abrir as contas dele</p>
     </div>
 
-    <div class="card">
-      <h1 class="r-title">Patrimônio Michelle</h1>
+    <div class="card" id="card-patrimonio-michelle">
+      <h1 class="r-title" id="titulo-patrimonio-michelle">Patrimônio Michelle</h1>
       <div id="r-total-michelle" class="r-total"></div>
       <div id="r-grupos-michelle"></div>
       <p class="r-hint">Toque num grupo pra abrir as contas dele</p>
@@ -969,6 +969,7 @@ let categorias = [];
 let fluxoAtual = 'entrada';
 let resumoCarregado = false;
 let patrimonioMichelleCarregado = false;
+let perfilAtual = null;
 let entradaEditadaManualmente = false;
 let lancamentosCarregados = false;
 let lancamentosTodos = [];
@@ -2652,6 +2653,7 @@ function aposLogin(){
 
 function entrarNoApp(){
   irPara('app');
+  carregarPerfil();
   carregarDados();
   setDefaultData('data-treino');
   renderTreinoSelects();
@@ -2659,6 +2661,45 @@ function entrarNoApp(){
   setDefaultData('data-ativo');
   onTipoAtivoChange();
   carregarTickersConhecidos();
+}
+
+async function carregarPerfil(){
+  const { data, error } = await sb.from('perfis').select('nome, titulares_permitidos').maybeSingle();
+  perfilAtual = (!error && data) ? data : null;
+  aplicarRestricaoPerfil();
+}
+
+function aplicarRestricaoPerfil(){
+  const restrito = !!perfilAtual && perfilAtual.nome === 'Michelle';
+
+  document.querySelectorAll('.menu-nav button').forEach(btn => { btn.style.display = ''; });
+  document.querySelectorAll('.menu-nav .menu-section').forEach(sec => { sec.style.display = ''; });
+
+  if(restrito){
+    const idsPermitidos = ['menu-btn-resumo', 'menu-btn-lancar'];
+    document.querySelectorAll('.menu-nav button').forEach(btn => {
+      if(!idsPermitidos.includes(btn.id)) btn.style.display = 'none';
+    });
+    document.querySelectorAll('.menu-nav .menu-section').forEach(sec => {
+      let irmao = sec.nextElementSibling;
+      let temVisivel = false;
+      while(irmao && !irmao.classList.contains('menu-section')){
+        if(irmao.style.display !== 'none') temVisivel = true;
+        irmao = irmao.nextElementSibling;
+      }
+      sec.style.display = temVisivel ? '' : 'none';
+    });
+
+    const cardDela = document.getElementById('card-patrimonio-michelle');
+    const cardDele = document.getElementById('card-patrimonio-matheus');
+    if(cardDele) cardDele.style.display = 'none';
+    if(cardDela){
+      const titulo = document.getElementById('titulo-patrimonio-michelle');
+      if(titulo) titulo.textContent = 'Patrimônio';
+    }
+
+    irParaView('lancar');
+  }
 }
 
 async function esqueciPin(){
