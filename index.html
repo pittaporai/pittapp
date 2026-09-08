@@ -11,6 +11,7 @@
   :root{
     --bg:#0B0B0C; --panel:#151517; --panel-2:#1C1C1F; --line:#2A2A2E; --text:#F2F0EC; --muted:#9A9AA0;
     --orange:#E8622C; --green:#5CA86B; --red:#C5473F; --gray1:#C9C7C2; --gray2:#EDEBE6; --blue:#4C8DFF;
+    --orange-dark:#B84E22; --yellow:#E0B23C; --yellow-dark:#A67C1D;
   }
   *{box-sizing:border-box;}
   body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:24px 16px calc(24px + env(safe-area-inset-bottom));}
@@ -73,20 +74,35 @@
 
   /* DRE (Análise) — tabela real, 3 níveis navegáveis: Receitas/Despesas > Grupo > Subgrupo */
   .dre-scroll{overflow-x:auto;margin:0 -22px;padding:0 22px;}
-  .dre-table{width:100%;border-collapse:collapse;font-size:12px;}
-  .dre-table th, .dre-table td{padding:9px 8px;white-space:nowrap;}
+  .dre-table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;border-radius:10px;overflow:hidden;}
+  .dre-table th, .dre-table td{padding:10px 8px;white-space:nowrap;}
   .dre-table th{background:#000;color:#fff;font-size:10.5px;text-transform:uppercase;letter-spacing:.03em;text-align:right;position:sticky;top:0;}
   .dre-table th:first-child, .dre-table td:first-child{text-align:left;white-space:normal;min-width:150px;}
   .dre-table th:not(:first-child), .dre-table td:not(:first-child){min-width:82px;text-align:right;}
-  .dre-table td:nth-child(4){background:rgba(232,98,44,0.10);font-weight:700;}
-  .dre-row-l1{background:#3A3A3E;color:#fff;font-weight:700;cursor:pointer;}
-  .dre-row-l1 td:nth-child(4){background:rgba(232,98,44,0.22);}
-  .dre-row-l2{background:rgba(232,98,44,0.07);font-weight:600;color:var(--gray2);cursor:pointer;}
+  /* Realizado (col 4) e Δ (col 5): tons de laranja/amarelo escalando com o nível da linha */
+  .dre-table th:nth-child(4){background:var(--orange-dark);color:#fff;}
+  .dre-table th:nth-child(5){background:var(--yellow-dark);color:#fff;}
+  .dre-table td:nth-child(4){background:rgba(232,98,44,0.09);font-weight:700;}
+  .dre-table td:nth-child(5){background:rgba(224,178,60,0.09);font-weight:700;}
+  /* Nível 1 — Receitas/Despesas: cinza mais forte, cabeçalho de grupo */
+  .dre-row-l1{background:#333338;color:#fff;font-weight:700;cursor:pointer;}
+  .dre-row-l1 td:nth-child(4){background:rgba(232,98,44,0.30);}
+  .dre-row-l1 td:nth-child(5){background:rgba(224,178,60,0.30);}
+  .dre-row-l1 td:first-child::before{content:'▸ ';display:inline-block;color:var(--muted);font-size:10px;transition:transform .15s;}
+  .dre-row-l1.fechado td:first-child::before{content:'▾ ';}
+  /* Nível 2 — grupos (Empreendedorismo, Outros, Receitas...): cinza intermediário */
+  .dre-row-l2{background:#1E1E21;font-weight:600;color:var(--gray2);cursor:pointer;}
+  .dre-row-l2 td:nth-child(4){background:rgba(232,98,44,0.17);}
+  .dre-row-l2 td:nth-child(5){background:rgba(224,178,60,0.17);}
+  .dre-row-l2 td:first-child::before{content:'▸ ';display:inline-block;color:var(--muted);font-size:10px;}
+  .dre-row-l2.fechado td:first-child::before{content:'▾ ';}
+  /* Nível 3 — itens (Salário, Benefício...): sem fundo de grupo, indentado */
   .dre-row-l3{color:var(--gray2);}
-  .dre-row-l3 td:first-child{padding-left:22px;color:var(--muted);}
+  .dre-row-l3 td:first-child{padding-left:26px;color:var(--muted);}
   tr.dre-hide{display:none;}
   tfoot .dre-row-resultado{background:#000;color:#fff;font-weight:700;}
-  tfoot .dre-row-resultado td:nth-child(4){background:rgba(232,98,44,0.35);}
+  tfoot .dre-row-resultado td:nth-child(4){background:var(--orange-dark);}
+  tfoot .dre-row-resultado td:nth-child(5){background:var(--yellow-dark);}
 
   .r-hint{font-size:11px;color:#5f5e5a;margin-top:16px;text-align:center;}
 
@@ -1735,6 +1751,8 @@ function toggleDreL1(i){
 }
 
 function toggleDreL2(i, j){
+  const linha = document.getElementById('dre-tr-l2-' + i + '-' + j);
+  if(linha) linha.classList.toggle('fechado');
   document.querySelectorAll('.dre-l3-de-' + i + '-' + j).forEach(tr => tr.classList.toggle('dre-hide'));
 }
 
