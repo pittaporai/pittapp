@@ -2069,11 +2069,9 @@ async function salvarTreino(){
   const tempoMinRaw = document.getElementById('aerobico-tempo').value;
   const tempoSegRaw = document.getElementById('aerobico-segundos').value;
   const tempoMin = aerobico && tempoMinRaw ? parseInt(tempoMinRaw, 10) : (aerobico ? 0 : null);
-  let tempoSeg = aerobico && tempoSegRaw ? parseInt(tempoSegRaw, 10) : (aerobico ? 0 : null);
-  if(aerobico && tempoSeg !== null){
-    if(isNaN(tempoSeg) || tempoSeg < 0) tempoSeg = 0;
-    if(tempoSeg > 59) tempoSeg = 59;
-  }
+  let tempoSeg = aerobico && tempoSegRaw ? parseInt(tempoSegRaw, 10) : 0;
+  if(isNaN(tempoSeg) || tempoSeg < 0) tempoSeg = 0;
+  if(tempoSeg > 59) tempoSeg = 59;
   const distanciaRaw = document.getElementById('aerobico-distancia').value;
   const distanciaKm = aerobico && distanciaRaw ? parseFloat(distanciaRaw.replace(',', '.')) : null;
   const tipoAerobico = aerobico ? (document.getElementById('aerobico-tipo').value || null) : null;
@@ -2283,11 +2281,9 @@ async function salvarEdicaoTreino(){
   const tempoMinRaw = document.getElementById('dtr-aerobico-tempo').value;
   const tempoSegRaw = document.getElementById('dtr-aerobico-segundos').value;
   const tempoMin = aerobico && tempoMinRaw ? parseInt(tempoMinRaw, 10) : (aerobico ? 0 : null);
-  let tempoSeg = aerobico && tempoSegRaw ? parseInt(tempoSegRaw, 10) : (aerobico ? 0 : null);
-  if(aerobico && tempoSeg !== null){
-    if(isNaN(tempoSeg) || tempoSeg < 0) tempoSeg = 0;
-    if(tempoSeg > 59) tempoSeg = 59;
-  }
+  let tempoSeg = aerobico && tempoSegRaw ? parseInt(tempoSegRaw, 10) : 0;
+  if(isNaN(tempoSeg) || tempoSeg < 0) tempoSeg = 0;
+  if(tempoSeg > 59) tempoSeg = 59;
   const distanciaRaw = document.getElementById('dtr-aerobico-distancia').value;
   const distanciaKm = aerobico && distanciaRaw ? parseFloat(distanciaRaw.replace(',', '.')) : null;
   const tipoAerobico = aerobico ? (document.getElementById('dtr-aerobico-tipo').value || null) : null;
