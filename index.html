@@ -12,6 +12,7 @@
     --bg:#0B0B0C; --panel:#151517; --panel-2:#1C1C1F; --line:#2A2A2E; --text:#F2F0EC; --muted:#9A9AA0;
     --orange:#E8622C; --green:#5CA86B; --red:#C5473F; --gray1:#C9C7C2; --gray2:#EDEBE6; --blue:#4C8DFF;
     --orange-dark:#B84E22; --yellow:#E0B23C; --yellow-dark:#A67C1D;
+    --orange-pastel:#F0A878; --orange-pastel-text:#4A2A12;
   }
   *{box-sizing:border-box;}
   body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:24px 16px calc(24px + env(safe-area-inset-bottom));}
@@ -73,36 +74,41 @@
   .sub-linha:not(:last-child){border-bottom:1px solid rgba(255,255,255,.05);}
 
   /* DRE (Análise) — tabela real, 3 níveis navegáveis: Receitas/Despesas > Grupo > Subgrupo */
-  .dre-scroll{overflow-x:auto;margin:0 -22px;padding:0 22px;}
-  .dre-table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;border-radius:10px;overflow:hidden;}
-  .dre-table th, .dre-table td{padding:10px 8px;white-space:nowrap;}
-  .dre-table th{background:#000;color:#fff;font-size:10.5px;text-transform:uppercase;letter-spacing:.03em;text-align:right;position:sticky;top:0;}
-  .dre-table th:first-child, .dre-table td:first-child{text-align:left;white-space:normal;min-width:150px;}
-  .dre-table th:not(:first-child), .dre-table td:not(:first-child){min-width:82px;text-align:right;}
-  /* Realizado (col 4) e Δ (col 5): tons de laranja/amarelo escalando com o nível da linha */
+  .dre-scroll{width:100%;}
+  .dre-table{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:0;font-size:10.5px;border-radius:10px;overflow:hidden;}
+  .dre-table th, .dre-table td{padding:7px 3px;overflow-wrap:anywhere;}
+  .dre-table th{background:#000;color:#fff;font-size:9px;text-transform:uppercase;letter-spacing:.02em;text-align:center;position:sticky;top:0;line-height:1.25;}
+  .dre-table td{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .dre-table th:first-child, .dre-table td:first-child{text-align:left;white-space:normal;}
+  .dre-table th:not(:first-child), .dre-table td:not(:first-child){text-align:right;}
+  .dre-table col.col-desc{width:30%;}
+  .dre-table col.col-num{width:17.5%;}
+  /* Realizado (col 4) e Δ (col 5): tons de laranja escalando com o nível da linha (mesma família de cor, sem amarelo) */
   .dre-table th:nth-child(4){background:var(--orange-dark);color:#fff;}
-  .dre-table th:nth-child(5){background:var(--yellow-dark);color:#fff;}
+  .dre-table th:nth-child(5){background:var(--orange-pastel);color:var(--orange-pastel-text);}
   .dre-table td:nth-child(4){background:rgba(232,98,44,0.09);font-weight:700;}
-  .dre-table td:nth-child(5){background:rgba(224,178,60,0.09);font-weight:700;}
+  .dre-table td:nth-child(5){background:rgba(240,168,120,0.13);font-weight:700;}
   /* Nível 1 — Receitas/Despesas: cinza mais forte, cabeçalho de grupo */
   .dre-row-l1{background:#333338;color:#fff;font-weight:700;cursor:pointer;}
   .dre-row-l1 td:nth-child(4){background:rgba(232,98,44,0.30);}
-  .dre-row-l1 td:nth-child(5){background:rgba(224,178,60,0.30);}
+  .dre-row-l1 td:nth-child(5){background:rgba(240,168,120,0.30);}
   .dre-row-l1 td:first-child::before{content:'▸ ';display:inline-block;color:var(--muted);font-size:10px;transition:transform .15s;}
   .dre-row-l1.fechado td:first-child::before{content:'▾ ';}
-  /* Nível 2 — grupos (Empreendedorismo, Outros, Receitas...): cinza intermediário */
+  /* Nível 2 — grupos (Empreendedorismo, Outros, Receitas...): cinza intermediário, com linha sutil separando do próximo */
   .dre-row-l2{background:#1E1E21;font-weight:600;color:var(--gray2);cursor:pointer;}
+  .dre-row-l2 td{border-bottom:1px solid rgba(255,255,255,.07);}
   .dre-row-l2 td:nth-child(4){background:rgba(232,98,44,0.17);}
-  .dre-row-l2 td:nth-child(5){background:rgba(224,178,60,0.17);}
+  .dre-row-l2 td:nth-child(5){background:rgba(240,168,120,0.20);}
   .dre-row-l2 td:first-child::before{content:'▸ ';display:inline-block;color:var(--muted);font-size:10px;}
   .dre-row-l2.fechado td:first-child::before{content:'▾ ';}
-  /* Nível 3 — itens (Salário, Benefício...): sem fundo de grupo, indentado */
+  /* Nível 3 — itens (Salário, Benefício...): sem fundo de grupo, indentado, com linha sutil separando do próximo */
   .dre-row-l3{color:var(--gray2);}
-  .dre-row-l3 td:first-child{padding-left:26px;color:var(--muted);}
+  .dre-row-l3 td{border-bottom:1px solid rgba(255,255,255,.05);}
+  .dre-row-l3 td:first-child{padding-left:14px;color:var(--muted);}
   tr.dre-hide{display:none;}
   tfoot .dre-row-resultado{background:#000;color:#fff;font-weight:700;}
   tfoot .dre-row-resultado td:nth-child(4){background:var(--orange-dark);}
-  tfoot .dre-row-resultado td:nth-child(5){background:var(--yellow-dark);}
+  tfoot .dre-row-resultado td:nth-child(5){background:var(--orange-pastel);color:var(--orange-pastel-text);}
 
   .r-hint{font-size:11px;color:#5f5e5a;margin-top:16px;text-align:center;}
 
@@ -497,6 +503,13 @@
       <p class="sub" style="text-align:center;margin-top:-14px;">DRE — Orçado x Realizado (2026)</p>
       <div class="dre-scroll">
         <table class="dre-table">
+          <colgroup>
+            <col class="col-desc">
+            <col class="col-num">
+            <col class="col-num">
+            <col class="col-num">
+            <col class="col-num">
+          </colgroup>
           <thead>
             <tr>
               <th>Descrição</th>
@@ -519,6 +532,39 @@
         </table>
       </div>
       <p class="r-hint">Toque em Receitas/Despesas ou num grupo pra abrir os detalhes. Valores importados do orçamento — Realizado ainda é um retrato do arquivo, não ao vivo.</p>
+
+      <p class="chart-titulo laranja" style="margin-top:28px;">Orçado x Realizado por mês</p>
+      <div class="lf-row">
+        <div class="field">
+          <label>Fluxo</label>
+          <select id="dre-chart-fluxo" onchange="onDreChartFluxoChange()">
+            <option value="saida">Despesas</option>
+            <option value="entrada">Receitas</option>
+          </select>
+        </div>
+      </div>
+      <div class="lf-row">
+        <div class="field">
+          <label>Grupo</label>
+          <select id="dre-chart-grupo" onchange="onDreChartGrupoChange()"></select>
+        </div>
+        <div class="field">
+          <label>Subgrupo</label>
+          <select id="dre-chart-subgrupo" onchange="atualizarGraficosDre()">
+            <option value="">Todos (grupo inteiro)</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="position:relative;height:230px;margin-top:12px;">
+        <canvas id="dre-chart-barras"></canvas>
+      </div>
+
+      <p class="chart-titulo" style="margin-top:22px;">Delta acumulado (Realizado − Orçado)</p>
+      <div style="position:relative;height:210px;margin-top:8px;">
+        <canvas id="dre-chart-acumulado"></canvas>
+      </div>
+      <p class="r-hint" id="dre-chart-hint"></p>
     </div>
   </div>
 
@@ -998,6 +1044,12 @@ let treinosRealizadosTodos = [];
 let treinosSelecionadosEdicao = [''];
 let detalheTreinoId = null;
 let dreCarregado = false;
+let dreL1s = [];
+let dreL2s = [];
+let dreL3s = [];
+let dreLancamentos2026 = null;
+let dreChartBarras = null;
+let dreChartAcumulado = null;
 
 const MOEDAS = ['BRL', 'USD', 'CLP', 'ARS', 'EUR'];
 
@@ -1680,9 +1732,15 @@ function corDelta(delta){
   return delta >= 0 ? 'var(--green)' : 'var(--red)';
 }
 
+function fmtDre(v){
+  const neg = v < 0;
+  const abs = Math.round(Math.abs(v)).toLocaleString('pt-BR');
+  return neg ? '(' + abs + ')' : abs;
+}
+
 function celulasDre(r){
   const delta = r.realizado - r.orcado_ytd;
-  return `<td>${fmt(r.orcado)}</td><td>${fmt(r.orcado_ytd)}</td><td>${fmt(r.realizado)}</td><td style="color:${corDelta(delta)};">${fmt(delta)}</td>`;
+  return `<td>${fmtDre(r.orcado)}</td><td>${fmtDre(r.orcado_ytd)}</td><td>${fmtDre(r.realizado)}</td><td style="color:${corDelta(delta)};">${fmtDre(delta)}</td>`;
 }
 
 async function carregarDRE(){
@@ -1698,18 +1756,21 @@ async function carregarDRE(){
 
   const resultado = data.find(r => r.nivel === 4);
   if(resultado){
-    document.getElementById('dre-res-orcado').textContent = fmt(resultado.orcado);
-    document.getElementById('dre-res-orcado-ytd').textContent = fmt(resultado.orcado_ytd);
-    document.getElementById('dre-res-realizado').textContent = fmt(resultado.realizado);
+    document.getElementById('dre-res-orcado').textContent = fmtDre(resultado.orcado);
+    document.getElementById('dre-res-orcado-ytd').textContent = fmtDre(resultado.orcado_ytd);
+    document.getElementById('dre-res-realizado').textContent = fmtDre(resultado.realizado);
     const deltaRes = resultado.realizado - resultado.orcado_ytd;
     const deltaEl = document.getElementById('dre-res-delta');
-    deltaEl.textContent = fmt(deltaRes);
+    deltaEl.textContent = fmtDre(deltaRes);
     deltaEl.style.color = corDelta(deltaRes);
   }
 
   const l1s = data.filter(r => r.nivel === 1);
   const l2s = data.filter(r => r.nivel === 2);
   const l3s = data.filter(r => r.nivel === 3);
+  dreL1s = l1s;
+  dreL2s = l2s;
+  dreL3s = l3s;
   const nomeL1 = { entrada: 'Receitas', saida: 'Despesas' };
 
   let html = '';
@@ -1738,6 +1799,8 @@ async function carregarDRE(){
 
   tbody.innerHTML = html;
   dreCarregado = true;
+
+  popularFiltrosDreChart();
 }
 
 function toggleDreL1(i){
@@ -1754,6 +1817,174 @@ function toggleDreL2(i, j){
   const linha = document.getElementById('dre-tr-l2-' + i + '-' + j);
   if(linha) linha.classList.toggle('fechado');
   document.querySelectorAll('.dre-l3-de-' + i + '-' + j).forEach(tr => tr.classList.toggle('dre-hide'));
+}
+
+// ---------- Análise (gráficos Orçado x Realizado por mês) ----------
+
+const NOMES_MES_CURTO = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+function popularFiltrosDreChart(){
+  const fluxoSel = document.getElementById('dre-chart-fluxo');
+  if(!fluxoSel) return;
+  onDreChartFluxoChange();
+}
+
+function onDreChartFluxoChange(){
+  const fluxo = document.getElementById('dre-chart-fluxo').value;
+  const grupoSel = document.getElementById('dre-chart-grupo');
+  const l1 = dreL1s.find(r => r.fluxo === fluxo);
+  const grupos = l1 ? dreL2s.filter(r => r.codigo_pai === l1.codigo) : [];
+  grupoSel.innerHTML = grupos.map(g => `<option value="${g.codigo}">${g.descricao}</option>`).join('');
+  onDreChartGrupoChange();
+}
+
+function onDreChartGrupoChange(){
+  const grupoCodigo = document.getElementById('dre-chart-grupo').value;
+  const subSel = document.getElementById('dre-chart-subgrupo');
+  const subs = dreL3s.filter(r => r.codigo_pai === grupoCodigo);
+  subSel.innerHTML = '<option value="">Todos (grupo inteiro)</option>' + subs.map(s => `<option value="${s.codigo}">${s.descricao}</option>`).join('');
+  atualizarGraficosDre();
+}
+
+async function garantirLancamentos2026(){
+  if(dreLancamentos2026) return dreLancamentos2026;
+  const { data, error } = await sb.from('lancamentos')
+    .select('valor, fluxo, data_hora, categorias(nome, grupo)')
+    .gte('data_hora', '2026-01-01T00:00:00')
+    .lt('data_hora', '2027-01-01T00:00:00');
+  dreLancamentos2026 = error ? [] : data;
+  return dreLancamentos2026;
+}
+
+function realizadoMensal(lancamentos, fluxo, grupoDescricao, subgrupoDescricao){
+  const meses = Array(12).fill(0);
+  lancamentos.forEach(l => {
+    if(l.fluxo !== fluxo) return;
+    const cat = l.categorias;
+    if(!cat || cat.grupo !== grupoDescricao) return;
+    if(subgrupoDescricao && cat.nome !== subgrupoDescricao) return;
+    const mes = new Date(l.data_hora).getMonth();
+    meses[mes] += Number(l.valor);
+  });
+  return fluxo === 'saida' ? meses.map(v => -v) : meses;
+}
+
+async function atualizarGraficosDre(){
+  const hintEl = document.getElementById('dre-chart-hint');
+  const fluxo = document.getElementById('dre-chart-fluxo').value;
+  const grupoCodigo = document.getElementById('dre-chart-grupo').value;
+  const subCodigo = document.getElementById('dre-chart-subgrupo').value;
+
+  const grupo = dreL2s.find(g => g.codigo === grupoCodigo);
+  const sub = subCodigo ? dreL3s.find(s => s.codigo === subCodigo) : null;
+  if(!grupo){ return; }
+
+  const orcadoAnual = sub ? sub.orcado : grupo.orcado;
+  const orcadoMensal = orcadoAnual / 12;
+  const orcadoMeses = Array(12).fill(orcadoMensal);
+
+  const lancamentos = await garantirLancamentos2026();
+  const grupoDescricao = grupo.descricao;
+  const subDescricao = sub ? sub.descricao : null;
+  const realizadoMeses = realizadoMensal(lancamentos, fluxo, grupoDescricao, subDescricao);
+
+  const labels = NOMES_MES_CURTO;
+
+  if(typeof Chart === 'undefined'){
+    if(hintEl) hintEl.textContent = 'Não deu pra carregar a biblioteca do gráfico (Chart.js). Tenta recarregar a página.';
+    return;
+  }
+
+  const corOrcado = '#8a8a90';
+  const corRealizado = '#E8622C';
+
+  if(dreChartBarras){
+    dreChartBarras.data.labels = labels;
+    dreChartBarras.data.datasets[0].data = orcadoMeses;
+    dreChartBarras.data.datasets[1].data = realizadoMeses;
+    dreChartBarras.update();
+  } else {
+    const ctx = document.getElementById('dre-chart-barras').getContext('2d');
+    dreChartBarras = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [
+          { label: 'Orçado', data: orcadoMeses, backgroundColor: corOrcado },
+          { label: 'Realizado', data: realizadoMeses, backgroundColor: corRealizado }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: { ticks: { color: '#9A9AA0', font: { size: 10 } }, grid: { display: false } },
+          y: { ticks: { color: '#9A9AA0', font: { size: 9 }, callback: v => fmtDre(v) }, grid: { color: '#2A2A2E' } }
+        },
+        plugins: {
+          legend: { labels: { color: '#F2F0EC', font: { size: 10.5 } } },
+          datalabels: { display: false }
+        }
+      }
+    });
+  }
+
+  // Delta acumulado: só até o mês atual (meses futuros não têm realizado ainda)
+  const hoje = new Date();
+  const mesAtual = (hoje.getFullYear() === 2026) ? hoje.getMonth() : 11;
+  const labelsAcum = labels.slice(0, mesAtual + 1);
+  let acumulado = 0;
+  const deltaAcumulado = [];
+  for(let i = 0; i <= mesAtual; i++){
+    acumulado += (realizadoMeses[i] - orcadoMeses[i]);
+    deltaAcumulado.push(acumulado);
+  }
+
+  const corDeltaLinha = deltaAcumulado[deltaAcumulado.length - 1] >= 0 ? '#5CA86B' : '#C5473F';
+
+  if(dreChartAcumulado){
+    dreChartAcumulado.data.labels = labelsAcum;
+    dreChartAcumulado.data.datasets[0].data = deltaAcumulado;
+    dreChartAcumulado.data.datasets[0].borderColor = corDeltaLinha;
+    dreChartAcumulado.data.datasets[0].backgroundColor = corDeltaLinha + '33';
+    dreChartAcumulado.update();
+  } else {
+    const ctxA = document.getElementById('dre-chart-acumulado').getContext('2d');
+    dreChartAcumulado = new Chart(ctxA, {
+      type: 'line',
+      data: {
+        labels: labelsAcum,
+        datasets: [{
+          label: 'Delta acumulado',
+          data: deltaAcumulado,
+          borderColor: corDeltaLinha,
+          backgroundColor: corDeltaLinha + '33',
+          fill: true,
+          tension: 0.25,
+          pointRadius: 3,
+          pointBackgroundColor: corDeltaLinha
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: { ticks: { color: '#9A9AA0', font: { size: 10 } }, grid: { display: false } },
+          y: { ticks: { color: '#9A9AA0', font: { size: 9 }, callback: v => fmtDre(v) }, grid: { color: '#2A2A2E' } }
+        },
+        plugins: {
+          legend: { display: false },
+          datalabels: { display: false }
+        }
+      }
+    });
+  }
+
+  if(hintEl){
+    hintEl.textContent = grupoDescricao.startsWith('Casa -')
+      ? 'Obs.: para grupos "Casa", o Realizado mensal ainda é aproximado — vamos refinar isso junto com o Acerto de Contas.'
+      : 'Orçado mensal = orçado anual ÷ 12 (referência linear).';
+  }
 }
 
 // ---------- Lançamentos (consulta e filtro) ----------
