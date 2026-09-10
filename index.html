@@ -83,6 +83,8 @@
   .dre-table th:not(:first-child), .dre-table td:not(:first-child){text-align:right;}
   .dre-table col.col-desc{width:30%;}
   .dre-table col.col-num{width:17.5%;}
+  .casa-table col.col-mes{width:16%;}
+  .casa-table col.col-num{width:16.8%;}
   /* Realizado (col 4) e Δ (col 5): tons de laranja escalando com o nível da linha (mesma família de cor, sem amarelo) */
   .dre-table th:nth-child(4){background:var(--orange-dark);color:#fff;}
   .dre-table th:nth-child(5){background:var(--orange-pastel);color:var(--orange-pastel-text);}
@@ -234,6 +236,7 @@
       <p class="menu-section">Resumos</p>
       <button id="menu-btn-resumo" onclick="irParaView('resumo')">💵 Resumo</button>
       <button id="menu-btn-dre" onclick="irParaView('dre')">📊 Análise</button>
+      <button id="menu-btn-casa" onclick="irParaView('casa')">🏠 Casa</button>
       <button id="menu-btn-posicao" onclick="irParaView('posicao')">📈 Investimentos</button>
       <button id="menu-btn-analise" onclick="irParaView('analise')">💪 Treinos</button>
 
@@ -565,6 +568,48 @@
         <canvas id="dre-chart-acumulado"></canvas>
       </div>
       <p class="r-hint" id="dre-chart-hint"></p>
+    </div>
+  </div>
+
+  <div id="view-casa" class="view">
+    <div class="card">
+      <h1 class="r-title">🏠 Casa</h1>
+      <p class="sub" style="text-align:center;margin-top:-14px;">Acerto de Contas — desde abr/25</p>
+
+      <div class="destaque-card">
+        <div class="destaque-titulo" id="casa-destaque-titulo">Saldo acumulado</div>
+        <div class="destaque-total" id="casa-destaque-total">—</div>
+      </div>
+
+      <div style="position:relative;height:210px;margin-top:8px;">
+        <canvas id="casa-chart-acumulado"></canvas>
+      </div>
+
+      <p class="chart-titulo" style="margin-top:22px;">Detalhe por mês</p>
+      <div class="dre-scroll">
+        <table class="dre-table casa-table">
+          <colgroup>
+            <col class="col-mes">
+            <col class="col-num">
+            <col class="col-num">
+            <col class="col-num">
+            <col class="col-num">
+            <col class="col-num">
+          </colgroup>
+          <thead>
+            <tr>
+              <th>Mês</th>
+              <th>Desp. Casa</th>
+              <th>Rateado Mat.</th>
+              <th>Real Mat.</th>
+              <th>Δ</th>
+              <th>Acumulado</th>
+            </tr>
+          </thead>
+          <tbody id="casa-tbody"></tbody>
+        </table>
+      </div>
+      <p class="r-hint">Rateado/Real de Michelle = Desp. Casa − valor do Matheus na linha. Δ negativo = Matheus pagou mais do que devia (Michelle deve); positivo = Matheus deve. % de renda calculada por: Matheus = Salário+Benefício; Michelle = Salário+Consulta+Consultoria+Mima Café+Entradas Diversas, menos Custos Nutri+Empreender. Ainda vamos revisar essa lista juntos.</p>
     </div>
   </div>
 
@@ -1050,6 +1095,10 @@ let dreL3s = [];
 let dreLancamentos2026 = null;
 let dreChartBarras = null;
 let dreChartAcumulado = null;
+let casaCarregado = false;
+let casaMeses = null;
+let casaChartAcumulado = null;
+const CASA_INICIO = '2025-04';
 
 const MOEDAS = ['BRL', 'USD', 'CLP', 'ARS', 'EUR'];
 
@@ -1064,6 +1113,7 @@ function irParaView(nome){
   document.getElementById('menu-btn-lancar').classList.toggle('active', nome === 'lancar');
   document.getElementById('menu-btn-resumo').classList.toggle('active', nome === 'resumo');
   document.getElementById('menu-btn-dre').classList.toggle('active', nome === 'dre');
+  document.getElementById('menu-btn-casa').classList.toggle('active', nome === 'casa');
   document.getElementById('menu-btn-lancamentos').classList.toggle('active', nome === 'lancamentos');
   document.getElementById('menu-btn-treinos').classList.toggle('active', nome === 'treinos');
   document.getElementById('menu-btn-analise').classList.toggle('active', nome === 'analise');
@@ -1081,6 +1131,9 @@ function irParaView(nome){
   }
   if(nome === 'dre' && !dreCarregado){
     carregarDRE();
+  }
+  if(nome === 'casa' && !casaCarregado){
+    carregarCasa();
   }
   if(nome === 'lancamentos' && !lancamentosCarregados){
     carregarLancamentos();
@@ -1985,6 +2038,198 @@ async function atualizarGraficosDre(){
       ? 'Obs.: para grupos "Casa", o Realizado mensal ainda é aproximado — vamos refinar isso junto com o Acerto de Contas.'
       : 'Orçado mensal = orçado anual ÷ 12 (referência linear).';
   }
+}
+
+// ---------- Casa (Acerto de Contas) ----------
+
+const CASA_RECEITA_MATHEUS = ['Salário', 'Benefício'];
+const CASA_RECEITA_MICHELLE = ['Salário', 'Consulta', 'Consultoria', 'Mima Café', 'Entradas Diversas'];
+const CASA_CUSTO_GRUPOS_MICHELLE = ['Custos Nutri', 'Empreender'];
+
+function chaveMesReal(dataStr){
+  const d = new Date(dataStr);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+
+function mesEfetivoCasa(chaveReal){
+  return chaveReal < CASA_INICIO ? CASA_INICIO : chaveReal;
+}
+
+function taxaCasaMes(moeda, chaveReal, cotacoesMensais, config){
+  if(moeda === 'BRL') return 1;
+  const [ano, mes] = chaveReal.split('-').map(Number);
+  const row = cotacoesMensais.find(c => c.moeda === moeda && c.ano === ano && c.mes === mes);
+  if(row) return Number(row.taxa_media);
+  const cfgRow = config.find(c => c.chave === 'cotacao_' + moeda.toLowerCase() + '_brl');
+  return cfgRow ? Number(cfgRow.valor) : 1;
+}
+
+function labelMesCasa(chave){
+  const [ano, mes] = chave.split('-').map(Number);
+  return NOMES_MES_CURTO[mes - 1] + '/' + String(ano).slice(2);
+}
+
+function gerarMesesCasa(inicio, fim){
+  const lista = [];
+  let [ano, mes] = inicio.split('-').map(Number);
+  const [anoFim, mesFim] = fim.split('-').map(Number);
+  while(ano < anoFim || (ano === anoFim && mes <= mesFim)){
+    lista.push(ano + '-' + String(mes).padStart(2, '0'));
+    mes++;
+    if(mes > 12){ mes = 1; ano++; }
+  }
+  return lista;
+}
+
+async function carregarCasa(){
+  const tbody = document.getElementById('casa-tbody');
+  tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);">Carregando...</td></tr>';
+
+  const agora = new Date();
+  const nowIso = agora.toISOString();
+
+  const [lancRes, cotRes, cfgRes] = await Promise.all([
+    sb.from('lancamentos').select('fluxo, valor, moeda, data_hora, dono, categorias(nome, grupo), contas(titular)').lte('data_hora', nowIso),
+    sb.from('cotacoes_mensais').select('moeda, ano, mes, taxa_media'),
+    sb.from('config').select('chave, valor')
+  ]);
+
+  if(lancRes.error){
+    tbody.innerHTML = '<tr><td colspan="6" style="color:var(--red);">Erro: ' + lancRes.error.message + '</td></tr>';
+    return;
+  }
+
+  const lancamentos = lancRes.data || [];
+  const cotacoesMensais = cotRes.data || [];
+  const config = cfgRes.data || [];
+
+  const porMes = {};
+  function bucket(chave){
+    if(!porMes[chave]) porMes[chave] = { rendaMatheus: 0, receitaBrutaMichelle: 0, custoNegocioMichelle: 0, despesaCasa: 0, realMatheus: 0, realMichelle: 0 };
+    return porMes[chave];
+  }
+
+  lancamentos.forEach(l => {
+    const chaveReal = chaveMesReal(l.data_hora);
+    const taxa = taxaCasaMes(l.moeda, chaveReal, cotacoesMensais, config);
+    const valorBRL = Number(l.valor) * taxa;
+    const chave = mesEfetivoCasa(chaveReal);
+    const cat = l.categorias;
+    const grupo = cat ? cat.grupo : null;
+    const nome = cat ? cat.nome : null;
+    const titular = l.contas ? l.contas.titular : null;
+    const m = bucket(chave);
+
+    if(l.fluxo === 'entrada'){
+      if(l.dono === 'Matheus' && grupo === 'Receitas' && CASA_RECEITA_MATHEUS.includes(nome)){
+        m.rendaMatheus += valorBRL;
+      }
+      if(l.dono === 'Michelle' && CASA_RECEITA_MICHELLE.includes(nome)){
+        m.receitaBrutaMichelle += valorBRL;
+      }
+    } else if(l.fluxo === 'saida'){
+      if(l.dono === 'Michelle' && CASA_CUSTO_GRUPOS_MICHELLE.includes(grupo)){
+        m.custoNegocioMichelle += valorBRL;
+      }
+      if(l.dono === 'Casa'){
+        m.despesaCasa += valorBRL;
+        if(titular === 'Matheus') m.realMatheus += valorBRL;
+        else if(titular === 'Michelle') m.realMichelle += valorBRL;
+      }
+    }
+  });
+
+  const mesAtualChave = agora.getFullYear() + '-' + String(agora.getMonth() + 1).padStart(2, '0');
+  const meses = gerarMesesCasa(CASA_INICIO, mesAtualChave);
+
+  let acumulado = 0;
+  const linhas = meses.map(chave => {
+    const m = porMes[chave] || { rendaMatheus: 0, receitaBrutaMichelle: 0, custoNegocioMichelle: 0, despesaCasa: 0, realMatheus: 0, realMichelle: 0 };
+    const rendaMichelle = m.receitaBrutaMichelle - m.custoNegocioMichelle;
+    const totalRenda = m.rendaMatheus + rendaMichelle;
+    const pctMatheus = totalRenda > 0 ? (m.rendaMatheus / totalRenda) : 0.5;
+    const rateadoMatheus = m.despesaCasa * pctMatheus;
+    const delta = rateadoMatheus - m.realMatheus;
+    acumulado += delta;
+    return { chave, despesaCasa: m.despesaCasa, rateadoMatheus, realMatheus: m.realMatheus, delta, acumulado };
+  });
+
+  casaMeses = linhas;
+
+  tbody.innerHTML = linhas.map(l => `
+    <tr>
+      <td>${labelMesCasa(l.chave)}</td>
+      <td>${fmtDre(l.despesaCasa)}</td>
+      <td>${fmtDre(l.rateadoMatheus)}</td>
+      <td>${fmtDre(l.realMatheus)}</td>
+      <td style="color:${corDelta(l.delta)};">${fmtDre(l.delta)}</td>
+      <td style="color:${corDelta(l.acumulado)};font-weight:700;">${fmtDre(l.acumulado)}</td>
+    </tr>
+  `).join('');
+
+  const ultimo = linhas[linhas.length - 1];
+  const saldo = ultimo ? ultimo.acumulado : 0;
+  const tituloEl = document.getElementById('casa-destaque-titulo');
+  const totalEl = document.getElementById('casa-destaque-total');
+  if(Math.abs(saldo) < 1){
+    tituloEl.textContent = 'Contas batendo';
+    totalEl.textContent = 'R$ 0';
+    totalEl.style.color = 'var(--gray2)';
+  } else if(saldo > 0){
+    tituloEl.textContent = 'Michelle deve a Matheus';
+    totalEl.textContent = 'R$ ' + fmtDre(saldo);
+    totalEl.style.color = 'var(--green)';
+  } else {
+    tituloEl.textContent = 'Matheus deve a Michelle';
+    totalEl.textContent = 'R$ ' + fmtDre(Math.abs(saldo));
+    totalEl.style.color = 'var(--red)';
+  }
+
+  if(typeof Chart === 'undefined') { casaCarregado = true; return; }
+
+  const labels = linhas.map(l => labelMesCasa(l.chave));
+  const dataAcumulado = linhas.map(l => l.acumulado);
+  const corLinha = saldo >= 0 ? '#5CA86B' : '#C5473F';
+
+  if(casaChartAcumulado){
+    casaChartAcumulado.data.labels = labels;
+    casaChartAcumulado.data.datasets[0].data = dataAcumulado;
+    casaChartAcumulado.data.datasets[0].borderColor = corLinha;
+    casaChartAcumulado.data.datasets[0].backgroundColor = corLinha + '33';
+    casaChartAcumulado.update();
+  } else {
+    const ctx = document.getElementById('casa-chart-acumulado').getContext('2d');
+    casaChartAcumulado = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Saldo acumulado',
+          data: dataAcumulado,
+          borderColor: corLinha,
+          backgroundColor: corLinha + '33',
+          fill: true,
+          tension: 0.25,
+          pointRadius: 3,
+          pointBackgroundColor: corLinha
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: { ticks: { color: '#9A9AA0', font: { size: 10 } }, grid: { display: false } },
+          y: { ticks: { color: '#9A9AA0', font: { size: 9 }, callback: v => fmtDre(v) }, grid: { color: '#2A2A2E' } }
+        },
+        plugins: {
+          legend: { display: false },
+          datalabels: { display: false }
+        }
+      }
+    });
+  }
+
+  casaCarregado = true;
 }
 
 // ---------- Lançamentos (consulta e filtro) ----------
