@@ -86,12 +86,14 @@
   .casa-table col.col-mes{width:18%;}
   .casa-table col.col-num{width:28%;}
   .casa-table col.col-pessoa{width:26%;}
-  .casa-table th:nth-child(4), .casa-table td:nth-child(4){background:transparent;text-align:center;}
   /* Realizado (col 4) e Δ (col 5): tons de laranja escalando com o nível da linha (mesma família de cor, sem amarelo) */
   .dre-table th:nth-child(4){background:var(--orange-dark);color:#fff;}
   .dre-table th:nth-child(5){background:var(--orange-pastel);color:var(--orange-pastel-text);}
   .dre-table td:nth-child(4){background:rgba(232,98,44,0.09);font-weight:700;}
   .dre-table td:nth-child(5){background:rgba(240,168,120,0.13);font-weight:700;}
+  /* Casa: só 4 colunas (Mês/Casa/Saldo/Pessoa) — a 4ª é texto (nome), não deve herdar o destaque laranja acima */
+  .casa-table th:nth-child(4){background:transparent;}
+  .casa-table td:nth-child(4){background:transparent;text-align:center;font-weight:600;}
   /* Nível 1 — Receitas/Despesas: cinza mais forte, cabeçalho de grupo */
   .dre-row-l1{background:#333338;color:#fff;font-weight:700;cursor:pointer;}
   .dre-row-l1 td:nth-child(4){background:rgba(232,98,44,0.30);}
@@ -169,6 +171,17 @@
   .receita-casa-header td{background:#333338;color:#fff;font-weight:700;border-bottom:none;}
   .receita-casa-footer td{background:rgba(240,168,120,0.18);font-weight:700;border-bottom:none;}
 
+  .fatura-table{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:0;font-size:11px;border-radius:10px;overflow:hidden;}
+  .fatura-table th, .fatura-table td{padding:7px 3px;overflow-wrap:anywhere;}
+  .fatura-table th{background:#000;color:#fff;font-size:9px;text-transform:uppercase;letter-spacing:.02em;text-align:center;}
+  .fatura-table td{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right;}
+  .fatura-table th:first-child, .fatura-table td:first-child{text-align:left;white-space:normal;}
+  .fatura-table col.col-fatura{width:24%;}
+  .fatura-table col.col-num{width:19%;}
+  .fatura-table tr.ciclo-aberto td{background:rgba(240,168,120,0.16);font-weight:700;}
+  .fatura-table tr.fatura-total td{background:rgba(232,98,44,0.12);font-weight:700;border-top:2px solid var(--line);}
+  .tag-aberto{display:inline-block;font-size:8.5px;font-weight:700;color:var(--orange);text-transform:uppercase;letter-spacing:.03em;margin-left:4px;}
+
   .pos-item{background:var(--panel-2);border-radius:10px;padding:12px 14px;margin-bottom:8px;}
   .pos-item-top{display:flex;justify-content:space-between;align-items:center;}
   .pos-ticker{font-weight:700;font-size:14px;}
@@ -244,7 +257,8 @@
       <p class="menu-section">Resumos</p>
       <button id="menu-btn-resumo" onclick="irParaView('resumo')">💵 Resumo</button>
       <button id="menu-btn-dre" onclick="irParaView('dre')">📊 Análise</button>
-      <button id="menu-btn-casa" onclick="irParaView('casa')">🏠 Casa</button>
+      <button id="menu-btn-casa" onclick="irParaView('casa')">🏠 Rateio Casa</button>
+      <button id="menu-btn-fatura-btg" onclick="irParaView('fatura-btg')">💳 Fatura BTG</button>
       <button id="menu-btn-posicao" onclick="irParaView('posicao')">📈 Investimentos</button>
       <button id="menu-btn-analise" onclick="irParaView('analise')">💪 Treinos</button>
 
@@ -581,25 +595,30 @@
 
   <div id="view-casa" class="view">
     <div class="card">
-      <h1 class="r-title">🏠 Casa</h1>
+      <h1 class="r-title">🏠 Rateio Casa</h1>
       <p class="sub" style="text-align:center;margin-top:-14px;">Acerto de Contas — desde abr/25</p>
 
-      <div class="destaque-card">
-        <div class="destaque-titulo">Média Gasto Casa (12 meses)</div>
-        <div class="destaque-total" id="casa-media-total" style="font-size:28px;">—</div>
+      <div class="field">
+        <label>Mês</label>
+        <select id="casa-mes-select" onchange="renderReceitaCasa()"></select>
       </div>
 
-      <div class="destaque-card" style="margin-top:-8px;">
-        <div class="destaque-titulo">Saldo Acumulado</div>
+      <div class="destaque-card">
+        <div class="destaque-titulo">Saldo Acumulado <span id="casa-destaque-mes" style="font-weight:400;opacity:.75;"></span></div>
         <div class="destaque-total" id="casa-destaque-total">—</div>
         <p class="sub" id="casa-destaque-pessoa" style="margin:-8px 0 0;font-weight:600;text-align:center;"></p>
       </div>
 
-      <div style="position:relative;height:210px;margin-top:8px;">
+      <p class="chart-titulo" style="margin-top:22px;">Receita Casa</p>
+      <table class="receita-casa-table">
+        <tbody id="receita-casa-tbody"></tbody>
+      </table>
+
+      <div style="position:relative;height:210px;margin-top:20px;">
         <canvas id="casa-chart-acumulado"></canvas>
       </div>
 
-      <p class="chart-titulo" style="margin-top:22px;">Detalhe por mês</p>
+      <p class="chart-titulo" style="margin-top:26px;">Detalhe por mês</p>
       <div class="dre-scroll">
         <table class="dre-table casa-table">
           <colgroup>
@@ -619,16 +638,43 @@
           <tbody id="casa-tbody"></tbody>
         </table>
       </div>
-      <p class="r-hint">Saldo = acumulado do Acerto de Contas até aquele mês. Pessoa = quem está devendo pagar a mais nesse ponto. % de renda calculada por: Matheus = Salário+Benefício; Michelle = Salário+Consulta+Consultoria+Mima Café+Entradas Diversas, menos Aluguel de Sala+CRN+Software Nutrição (redutoras da Consulta). Ainda vamos revisar essa lista juntos.</p>
+      <p class="r-hint">Saldo = acumulado do Acerto de Contas até aquele mês. Pessoa = quem está devendo pagar a mais nesse ponto. % de renda calculada por: Matheus = Salário+Benefício; Michelle = Salário+Consulta+Consultoria+Mima Café+Entradas Diversas, menos Aluguel de Sala+CRN+Software Nutrição (redutoras da Consulta). Real Matheus já vem líquido de ajustes manuais (reembolsos da Michelle pagos por fora do sistema, jul/25–ago/26) — registrados na tabela casa_ajustes_manuais. Ainda vamos revisar essa lista juntos.</p>
+    </div>
+  </div>
 
-      <p class="chart-titulo" style="margin-top:26px;">Receita Casa</p>
-      <div class="field">
-        <label>Mês</label>
-        <select id="casa-receita-mes" onchange="renderReceitaCasa()"></select>
+  <div id="view-fatura-btg" class="view">
+    <div class="card">
+      <h1 class="r-title">💳 Fatura BTG</h1>
+      <p class="sub" style="text-align:center;margin-top:-14px;">Ciclo de fatura (dia 11 ao dia 10) — desde out/26</p>
+
+      <div class="destaque-card">
+        <div class="destaque-titulo">Michelle deve <span id="fatura-btg-ciclo-aberto" style="font-weight:400;opacity:.75;"></span></div>
+        <div class="destaque-total" id="fatura-btg-michelle-total">—</div>
+        <p class="sub" id="fatura-btg-matheus-casa-sub" style="margin:-8px 0 0;text-align:center;"></p>
       </div>
-      <table class="receita-casa-table">
-        <tbody id="receita-casa-tbody"></tbody>
-      </table>
+
+      <div class="dre-scroll">
+        <table class="fatura-table">
+          <colgroup>
+            <col class="col-fatura">
+            <col class="col-num">
+            <col class="col-num">
+            <col class="col-num">
+            <col class="col-num">
+          </colgroup>
+          <thead>
+            <tr>
+              <th>Fatura</th>
+              <th>Michelle</th>
+              <th>Casa</th>
+              <th>Matheus</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody id="fatura-btg-tbody"></tbody>
+        </table>
+      </div>
+      <p class="r-hint">Fatura = ciclo de compras do dia 11 de um mês até o dia 10 do seguinte, identificada pelo mês de fechamento (ex: "Out/26" = 11/set a 10/out). A linha destacada é o ciclo em aberto, ainda somando. "Michelle" é o quanto ela precisa te pagar naquela fatura; "Casa" + "Matheus" é o que você cobre (fatura ou Entre Contas).</p>
     </div>
   </div>
 
@@ -1119,6 +1165,10 @@ let casaMeses = null;
 let casaChartAcumulado = null;
 const CASA_INICIO = '2025-04';
 
+let faturaBtgCarregado = false;
+const BTG_CONTA_ID = '7dd6f54a-fb5c-41bd-8e33-d3d453ec0a71'; // conta "BTG +" (cartão compartilhado)
+const FATURA_BTG_INICIO = '2026-10'; // primeira fatura acompanhada nesta aba (ciclo 11/set–10/out/26)
+
 const MOEDAS = ['BRL', 'USD', 'CLP', 'ARS', 'EUR'];
 
 function fillMoedaSelect(sel){
@@ -1133,6 +1183,7 @@ function irParaView(nome){
   document.getElementById('menu-btn-resumo').classList.toggle('active', nome === 'resumo');
   document.getElementById('menu-btn-dre').classList.toggle('active', nome === 'dre');
   document.getElementById('menu-btn-casa').classList.toggle('active', nome === 'casa');
+  document.getElementById('menu-btn-fatura-btg').classList.toggle('active', nome === 'fatura-btg');
   document.getElementById('menu-btn-lancamentos').classList.toggle('active', nome === 'lancamentos');
   document.getElementById('menu-btn-treinos').classList.toggle('active', nome === 'treinos');
   document.getElementById('menu-btn-analise').classList.toggle('active', nome === 'analise');
@@ -1153,6 +1204,9 @@ function irParaView(nome){
   }
   if(nome === 'casa' && !casaCarregado){
     carregarCasa();
+  }
+  if(nome === 'fatura-btg' && !faturaBtgCarregado){
+    carregarFaturaBtg();
   }
   if(nome === 'lancamentos' && !lancamentosCarregados){
     carregarLancamentos();
@@ -2067,6 +2121,7 @@ const CASA_RECEITA_MICHELLE = ['Salário', 'Consulta', 'Consultoria', 'Mima Caf�
 // (não o grupo "Custos Nutri" inteiro, e sem "Empreender").
 const CASA_REDUTORES_MICHELLE = ['Aluguel de Sala', 'CRN', 'Software Nutrição'];
 let casaDetalheMensal = {};
+let casaAjustesManuais = [];
 
 function chaveMesReal(dataStr){
   const d = new Date(dataStr);
@@ -2110,9 +2165,10 @@ async function carregarCasa(){
   const agora = new Date();
   const nowIso = agora.toISOString();
 
-  const [cotRes, cfgRes] = await Promise.all([
+  const [cotRes, cfgRes, ajusteRes] = await Promise.all([
     sb.from('cotacoes_mensais').select('moeda, ano, mes, taxa_media'),
-    sb.from('config').select('chave, valor')
+    sb.from('config').select('chave, valor'),
+    sb.from('casa_ajustes_manuais').select('mes, campo, valor, motivo')
   ]);
 
   // Sem paginação, o Supabase corta em 1000 linhas por padrão — com 7000+
@@ -2165,18 +2221,22 @@ async function carregarCasa(){
     if(l.fluxo === 'entrada'){
       if(l.dono === 'Matheus' && grupo === 'Receitas' && CASA_RECEITA_MATHEUS.includes(nome)){
         m.rendaMatheus += valorBRL;
-        const d = bucketDetalhe(chave);
+        // Detalhe da Receita Casa é sempre por mês REAL (chaveReal), nunca pelo
+        // mês efetivo/dobrado do Acerto de Contas — senão o primeiro balde
+        // (abr/25) somaria todo o histórico anterior junto e a composição
+        // mensal fica sem sentido.
+        const d = bucketDetalhe(chaveReal);
         d.matheus[nome] = (d.matheus[nome] || 0) + valorBRL;
       }
       if(l.dono === 'Michelle' && CASA_RECEITA_MICHELLE.includes(nome)){
         m.receitaBrutaMichelle += valorBRL;
-        const d = bucketDetalhe(chave);
+        const d = bucketDetalhe(chaveReal);
         d.michelleReceita[nome] = (d.michelleReceita[nome] || 0) + valorBRL;
       }
     } else if(l.fluxo === 'saida'){
       if(l.dono === 'Michelle' && CASA_REDUTORES_MICHELLE.includes(nome)){
         m.custoNegocioMichelle += valorBRL;
-        const d = bucketDetalhe(chave);
+        const d = bucketDetalhe(chaveReal);
         d.michelleReducao[nome] = (d.michelleReducao[nome] || 0) + valorBRL;
       }
       if(l.dono === 'Casa'){
@@ -2186,6 +2246,19 @@ async function carregarCasa(){
       }
     }
   });
+
+  // Ajustes manuais fixos (ex: reembolsos que a Michelle já pagou por fora do
+  // sistema por gastos pessoais dela no cartão BTG+ do Matheus) — registrados
+  // na tabela casa_ajustes_manuais, aplicados aqui reduzindo o campo indicado.
+  const ajustesPorMes = {};
+  (ajusteRes.data || []).forEach(a => {
+    ajustesPorMes[a.mes] = (ajustesPorMes[a.mes] || 0) + Number(a.valor);
+    if(a.campo === 'real_matheus'){
+      const m = bucket(a.mes);
+      m.realMatheus -= Number(a.valor);
+    }
+  });
+  casaAjustesManuais = ajusteRes.data || [];
 
   const mesAtualChave = agora.getFullYear() + '-' + String(agora.getMonth() + 1).padStart(2, '0');
   const meses = gerarMesesCasa(CASA_INICIO, mesAtualChave);
@@ -2220,33 +2293,12 @@ async function carregarCasa(){
     </tr>
   `).join('');
 
-  const ultimos12 = linhas.slice(-12);
-  const mediaCasa12m = ultimos12.length ? ultimos12.reduce((s, l) => s + l.despesaCasa, 0) / ultimos12.length : 0;
-  document.getElementById('casa-media-total').textContent = 'R$ ' + fmtDre(mediaCasa12m);
-
-  const ultimo = linhas[linhas.length - 1];
-  const saldo = ultimo ? ultimo.acumulado : 0;
-  const totalEl = document.getElementById('casa-destaque-total');
-  const pessoaEl = document.getElementById('casa-destaque-pessoa');
-  if(Math.abs(saldo) < 1){
-    totalEl.textContent = 'R$ 0';
-    totalEl.style.color = 'var(--gray2)';
-    pessoaEl.textContent = 'Contas batendo';
-  } else if(saldo > 0){
-    totalEl.textContent = 'R$ ' + fmtDre(saldo);
-    totalEl.style.color = 'var(--green)';
-    pessoaEl.textContent = 'Michelle deve pagar a mais';
-  } else {
-    totalEl.textContent = 'R$ ' + fmtDre(Math.abs(saldo));
-    totalEl.style.color = 'var(--red)';
-    pessoaEl.textContent = 'Matheus deve pagar a mais';
-  }
-
   if(typeof Chart === 'undefined') { casaCarregado = true; return; }
 
   const labels = linhas.map(l => labelMesCasa(l.chave));
   const dataAcumulado = linhas.map(l => l.acumulado);
-  const corLinha = saldo >= 0 ? '#5CA86B' : '#C5473F';
+  const saldoAtual = linhas.length ? linhas[linhas.length - 1].acumulado : 0;
+  const corLinha = saldoAtual >= 0 ? '#5CA86B' : '#C5473F';
 
   if(casaChartAcumulado){
     casaChartAcumulado.data.labels = labels;
@@ -2292,7 +2344,7 @@ async function carregarCasa(){
 // ---------- Casa (Receita Casa — DRE simples por mês) ----------
 
 function popularSelectReceitaCasa(){
-  const sel = document.getElementById('casa-receita-mes');
+  const sel = document.getElementById('casa-mes-select');
   if(!sel) return;
   const valorAtual = sel.value;
   const opcoes = casaMeses.slice().reverse();
@@ -2301,25 +2353,59 @@ function popularSelectReceitaCasa(){
   renderReceitaCasa();
 }
 
+// Atualiza, a partir do mês escolhido no filtro: (1) o card Saldo Acumulado
+// (vinculado ao mês selecionado) e (2) a tabela Receita Casa daquele mês.
+// A composição de receita usa sempre o detalhe por mês REAL (casaDetalheMensal
+// é preenchido por chaveReal em carregarCasa) — só o Saldo Acumulado usa o
+// mês efetivo/dobrado do Acerto de Contas (abr/25 concentra o que veio antes).
 function renderReceitaCasa(){
-  const sel = document.getElementById('casa-receita-mes');
+  const sel = document.getElementById('casa-mes-select');
   const tbody = document.getElementById('receita-casa-tbody');
   if(!sel || !tbody || !sel.value) return;
   const chave = sel.value;
   const det = casaDetalheMensal[chave] || { matheus: {}, michelleReceita: {}, michelleReducao: {} };
   const linha = casaMeses.find(l => l.chave === chave);
 
-  function linhaHtml(label, valor, cor){
-    const corTxt = cor ? `color:${cor};` : '';
-    return `<tr><td style="padding-left:14px;${corTxt}">${label}</td><td style="text-align:right;${corTxt}">${fmtDre(valor)}</td></tr>`;
+  const saldo = linha ? linha.acumulado : 0;
+  const totalEl = document.getElementById('casa-destaque-total');
+  const pessoaEl = document.getElementById('casa-destaque-pessoa');
+  const mesEl = document.getElementById('casa-destaque-mes');
+  if(mesEl) mesEl.textContent = '— ' + labelMesCasa(chave);
+  if(Math.abs(saldo) < 1){
+    totalEl.textContent = 'R$ 0';
+    totalEl.style.color = 'var(--gray2)';
+    pessoaEl.textContent = 'Contas batendo';
+  } else if(saldo > 0){
+    totalEl.textContent = 'R$ ' + fmtDre(saldo);
+    totalEl.style.color = 'var(--green)';
+    pessoaEl.textContent = 'Michelle deve pagar a mais';
+  } else {
+    totalEl.textContent = 'R$ ' + fmtDre(Math.abs(saldo));
+    totalEl.style.color = 'var(--red)';
+    pessoaEl.textContent = 'Matheus deve pagar a mais';
   }
 
-  let html = '<tr class="receita-casa-header"><td colspan="2">Matheus</td></tr>';
+  function linhaHtml(label, valor, cor){
+    const corTxt = cor ? `color:${cor};` : '';
+    return `<tr><td style="padding-left:14px;${corTxt}">${label}</td><td style="text-align:right;${corTxt}">${fmtDre(valor)}</td><td></td></tr>`;
+  }
+
+  const fmtPct = v => (v * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%';
+
+  const totalMatheus = CASA_RECEITA_MATHEUS.reduce((s, n) => s + (det.matheus[n] || 0), 0);
+  const totalReducaoMichelle = CASA_REDUTORES_MICHELLE.reduce((s, n) => s + (det.michelleReducao[n] || 0), 0);
+  const totalReceitaBrutaMichelle = CASA_RECEITA_MICHELLE.reduce((s, n) => s + (det.michelleReceita[n] || 0), 0);
+  const totalMichelle = totalReceitaBrutaMichelle - totalReducaoMichelle;
+  const totalGeral = totalMatheus + totalMichelle;
+  const pctMatheus = totalGeral > 0 ? (totalMatheus / totalGeral) : 0;
+  const pctMichelle = totalGeral > 0 ? (totalMichelle / totalGeral) : 0;
+
+  let html = `<tr class="receita-casa-header"><td>Matheus</td><td style="text-align:right;">${fmtDre(totalMatheus)}</td><td style="text-align:right;">${fmtPct(pctMatheus)}</td></tr>`;
   CASA_RECEITA_MATHEUS.forEach(nome => {
     html += linhaHtml(nome, det.matheus[nome] || 0);
   });
 
-  html += '<tr class="receita-casa-header"><td colspan="2">Michelle</td></tr>';
+  html += `<tr class="receita-casa-header"><td>Michelle</td><td style="text-align:right;">${fmtDre(totalMichelle)}</td><td style="text-align:right;">${fmtPct(pctMichelle)}</td></tr>`;
   html += linhaHtml('Consulta', det.michelleReceita['Consulta'] || 0);
   CASA_REDUTORES_MICHELLE.forEach(nome => {
     html += linhaHtml('(-) ' + nome, -(det.michelleReducao[nome] || 0), 'var(--red)');
@@ -2328,17 +2414,103 @@ function renderReceitaCasa(){
     html += linhaHtml(nome, det.michelleReceita[nome] || 0);
   });
 
-  const rendaMatheus = linha ? linha.rendaMatheus : 0;
-  const rendaMichelle = linha ? linha.rendaMichelle : 0;
-  const totalRenda = rendaMatheus + rendaMichelle;
-  const pctMatheus = linha ? linha.pctMatheus : 0.5;
-  const pctMichelle = 1 - pctMatheus;
-
-  html += `<tr class="receita-casa-footer"><td>Receita Casa</td><td style="text-align:right;">${fmtDre(totalRenda)}</td></tr>`;
-  html += `<tr class="receita-casa-footer"><td>% Michelle</td><td style="text-align:right;">${(pctMichelle * 100).toLocaleString('pt-BR', {maximumFractionDigits: 1})}%</td></tr>`;
-  html += `<tr class="receita-casa-footer"><td>% Matheus</td><td style="text-align:right;">${(pctMatheus * 100).toLocaleString('pt-BR', {maximumFractionDigits: 1})}%</td></tr>`;
+  html += `<tr class="receita-casa-footer"><td>Receita Casa</td><td style="text-align:right;">${fmtDre(totalGeral)}</td><td></td></tr>`;
 
   tbody.innerHTML = html;
+}
+
+// ---------- Fatura BTG (ciclo dia 11-10, Michelle x Casa x Matheus) ----------
+
+function cicloBtg(dataStr){
+  const d = new Date(dataStr);
+  let ano = d.getFullYear();
+  let mes = d.getMonth() + 1;
+  if(d.getDate() >= 11){
+    mes++;
+    if(mes > 12){ mes = 1; ano++; }
+  }
+  return ano + '-' + String(mes).padStart(2, '0');
+}
+
+function labelFaturaBtg(chave){
+  const [ano, mes] = chave.split('-').map(Number);
+  return NOMES_MES_CURTO[mes - 1] + '/' + String(ano).slice(2);
+}
+
+async function carregarFaturaBtg(){
+  const tbody = document.getElementById('fatura-btg-tbody');
+  tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Carregando...</td></tr>';
+
+  let lancamentos = [];
+  let erro = null;
+  const PAGE = 1000;
+  for(let from = 0; ; from += PAGE){
+    const { data: pagina, error: erroPagina } = await sb.from('lancamentos')
+      .select('valor, data_hora, dono')
+      .eq('conta_id', BTG_CONTA_ID)
+      .eq('fluxo', 'saida')
+      .order('data_hora', { ascending: true })
+      .range(from, from + PAGE - 1);
+    if(erroPagina){ erro = erroPagina; break; }
+    lancamentos = lancamentos.concat(pagina);
+    if(pagina.length < PAGE) break;
+  }
+
+  if(erro){
+    tbody.innerHTML = '<tr><td colspan="5" style="color:var(--red);">Erro: ' + erro.message + '</td></tr>';
+    return;
+  }
+
+  const porCiclo = {};
+  lancamentos.forEach(l => {
+    const ciclo = cicloBtg(l.data_hora);
+    if(ciclo < FATURA_BTG_INICIO) return;
+    if(!porCiclo[ciclo]) porCiclo[ciclo] = { michelle: 0, casa: 0, matheus: 0 };
+    const valor = Number(l.valor);
+    if(l.dono === 'Michelle') porCiclo[ciclo].michelle += valor;
+    else if(l.dono === 'Casa') porCiclo[ciclo].casa += valor;
+    else if(l.dono === 'Matheus') porCiclo[ciclo].matheus += valor;
+  });
+
+  const ciclos = Object.keys(porCiclo).sort();
+  const cicloAberto = cicloBtg(new Date().toISOString());
+
+  let totalMichelle = 0, totalCasa = 0, totalMatheus = 0;
+
+  const linhasHtml = ciclos.map(chave => {
+    const c = porCiclo[chave];
+    const total = c.michelle + c.casa + c.matheus;
+    totalMichelle += c.michelle;
+    totalCasa += c.casa;
+    totalMatheus += c.matheus;
+    const aberto = chave === cicloAberto;
+    return `
+      <tr class="${aberto ? 'ciclo-aberto' : ''}">
+        <td>${labelFaturaBtg(chave)}${aberto ? ' <span class="tag-aberto">aberto</span>' : ''}</td>
+        <td>${fmtDre(c.michelle)}</td>
+        <td>${fmtDre(c.casa)}</td>
+        <td>${fmtDre(c.matheus)}</td>
+        <td style="font-weight:700;">${fmtDre(total)}</td>
+      </tr>`;
+  }).join('');
+
+  const linhaTotal = `
+    <tr class="fatura-total">
+      <td>Total</td>
+      <td>${fmtDre(totalMichelle)}</td>
+      <td>${fmtDre(totalCasa)}</td>
+      <td>${fmtDre(totalMatheus)}</td>
+      <td>${fmtDre(totalMichelle + totalCasa + totalMatheus)}</td>
+    </tr>`;
+
+  tbody.innerHTML = (linhasHtml || '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Sem lançamentos ainda.</td></tr>') + linhaTotal;
+
+  const cicloAbertoDados = porCiclo[cicloAberto] || { michelle: 0, casa: 0, matheus: 0 };
+  document.getElementById('fatura-btg-ciclo-aberto').textContent = '— ' + labelFaturaBtg(cicloAberto) + ' (em aberto)';
+  document.getElementById('fatura-btg-michelle-total').textContent = 'R$ ' + fmtDre(cicloAbertoDados.michelle);
+  document.getElementById('fatura-btg-matheus-casa-sub').textContent = 'Casa + Matheus até agora: R$ ' + fmtDre(cicloAbertoDados.casa + cicloAbertoDados.matheus);
+
+  faturaBtgCarregado = true;
 }
 
 // ---------- Lançamentos (consulta e filtro) ----------
