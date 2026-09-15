@@ -674,7 +674,7 @@
           <tbody id="fatura-btg-tbody"></tbody>
         </table>
       </div>
-      <p class="r-hint">Fatura = ciclo de compras do dia 11 de um mês até o dia 10 do seguinte, identificada pelo mês de fechamento (ex: "Out/26" = 11/set a 10/out). A linha destacada é o ciclo em aberto, ainda somando. "Michelle" é o quanto ela precisa te pagar naquela fatura; "Casa" + "Matheus" é o que você cobre (fatura ou Entre Contas). "Saldo anterior" é tudo que já estava pendente no cartão antes de 11/ago/26 (faturas antigas não totalmente quitadas) — somado, o Total bate com o saldo real da conta BTG+.</p>
+      <p class="r-hint">Fatura = ciclo de compras do dia 11 de um mês até o dia 10 do seguinte, identificada pelo mês de fechamento (ex: "Out/26" = 11/set a 10/out). A linha destacada é o ciclo em aberto, ainda somando. "Michelle" é o quanto ela precisa te pagar naquela fatura; "Casa" + "Matheus" é o que você cobre (fatura ou Entre Contas).</p>
     </div>
   </div>
 
@@ -2472,16 +2472,6 @@ async function carregarFaturaBtg(){
     return;
   }
 
-  // Saldo anterior = tudo que já estava pendente no BTG+ antes do início desta
-  // aba (faturas antigas não 100% quitadas) — assim o Total bate com o saldo
-  // real da conta (entrada total - saida total).
-  const { data: entradasData } = await sb.from('lancamentos')
-    .select('valor')
-    .eq('conta_id', BTG_CONTA_ID)
-    .eq('fluxo', 'entrada');
-  const totalEntradaGeral = (entradasData || []).reduce((s, l) => s + Number(l.valor), 0);
-  const totalSaidaGeral = lancamentos.reduce((s, l) => s + Number(l.valor), 0);
-
   const porCiclo = {};
   lancamentos.forEach(l => {
     const ciclo = cicloBtg(l.data_hora);
@@ -2515,27 +2505,16 @@ async function carregarFaturaBtg(){
       </tr>`;
   }).join('');
 
-  const saldoAnterior = (totalSaidaGeral - totalEntradaGeral) - (totalMichelle + totalCasa + totalMatheus);
-
-  const linhaSaldoAnterior = `
-    <tr class="fatura-saldo-anterior">
-      <td>Saldo anterior</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td style="font-weight:700;">${fmtFaturaBtg(saldoAnterior)}</td>
-    </tr>`;
-
   const linhaTotal = `
     <tr class="fatura-total">
       <td>Total</td>
       <td>${fmtFaturaBtg(totalMichelle)}</td>
       <td>${fmtFaturaBtg(totalCasa)}</td>
       <td>${fmtFaturaBtg(totalMatheus)}</td>
-      <td>${fmtFaturaBtg(saldoAnterior + totalMichelle + totalCasa + totalMatheus)}</td>
+      <td>${fmtFaturaBtg(totalMichelle + totalCasa + totalMatheus)}</td>
     </tr>`;
 
-  tbody.innerHTML = linhaSaldoAnterior + (linhasHtml || '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Sem lançamentos ainda.</td></tr>') + linhaTotal;
+  tbody.innerHTML = (linhasHtml || '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Sem lançamentos ainda.</td></tr>') + linhaTotal;
 
   const cicloAbertoDados = porCiclo[cicloAberto] || { michelle: 0, casa: 0, matheus: 0 };
   document.getElementById('fatura-btg-ciclo-aberto').textContent = '- ' + labelFaturaBtgCompleto(cicloAberto);
