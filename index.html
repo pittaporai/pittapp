@@ -646,10 +646,9 @@
   <div id="view-fatura-btg" class="view">
     <div class="card">
       <h1 class="r-title">💳 Fatura BTG</h1>
-      <p class="sub" style="text-align:center;margin-top:-14px;">Ciclo de fatura (dia 11 ao dia 10) — desde set/26</p>
 
       <div class="destaque-card">
-        <div class="destaque-titulo">Michelle deve <span id="fatura-btg-ciclo-aberto" style="font-weight:400;opacity:.75;"></span></div>
+        <div class="destaque-titulo">Michelle <span id="fatura-btg-ciclo-aberto" style="font-weight:400;opacity:.75;"></span></div>
         <div class="destaque-total" id="fatura-btg-michelle-total">—</div>
         <p class="sub" id="fatura-btg-matheus-casa-sub" style="margin:-8px 0 0;text-align:center;"></p>
       </div>
@@ -2438,6 +2437,17 @@ function labelFaturaBtg(chave){
   return NOMES_MES_CURTO[mes - 1] + '/' + String(ano).slice(2);
 }
 
+const NOMES_MES_COMPLETO = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+function labelFaturaBtgCompleto(chave){
+  const [ano, mes] = chave.split('-').map(Number);
+  return NOMES_MES_COMPLETO[mes - 1] + '/' + ano;
+}
+function fmtFaturaBtg(v){
+  const neg = v < 0;
+  const abs = Math.abs(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return neg ? '(' + abs + ')' : abs;
+}
+
 async function carregarFaturaBtg(){
   const tbody = document.getElementById('fatura-btg-tbody');
   tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Carregando...</td></tr>';
@@ -2498,10 +2508,10 @@ async function carregarFaturaBtg(){
     return `
       <tr class="${aberto ? 'ciclo-aberto' : ''}">
         <td>${labelFaturaBtg(chave)}${aberto ? ' <span class="tag-aberto">aberto</span>' : ''}</td>
-        <td>${fmtDre(c.michelle)}</td>
-        <td>${fmtDre(c.casa)}</td>
-        <td>${fmtDre(c.matheus)}</td>
-        <td style="font-weight:700;">${fmtDre(total)}</td>
+        <td>${fmtFaturaBtg(c.michelle)}</td>
+        <td>${fmtFaturaBtg(c.casa)}</td>
+        <td>${fmtFaturaBtg(c.matheus)}</td>
+        <td style="font-weight:700;">${fmtFaturaBtg(total)}</td>
       </tr>`;
   }).join('');
 
@@ -2513,24 +2523,24 @@ async function carregarFaturaBtg(){
       <td>—</td>
       <td>—</td>
       <td>—</td>
-      <td style="font-weight:700;">${fmtDre(saldoAnterior)}</td>
+      <td style="font-weight:700;">${fmtFaturaBtg(saldoAnterior)}</td>
     </tr>`;
 
   const linhaTotal = `
     <tr class="fatura-total">
-      <td>Total (= Conta BTG+)</td>
-      <td>${fmtDre(totalMichelle)}</td>
-      <td>${fmtDre(totalCasa)}</td>
-      <td>${fmtDre(totalMatheus)}</td>
-      <td>${fmtDre(saldoAnterior + totalMichelle + totalCasa + totalMatheus)}</td>
+      <td>Total</td>
+      <td>${fmtFaturaBtg(totalMichelle)}</td>
+      <td>${fmtFaturaBtg(totalCasa)}</td>
+      <td>${fmtFaturaBtg(totalMatheus)}</td>
+      <td>${fmtFaturaBtg(saldoAnterior + totalMichelle + totalCasa + totalMatheus)}</td>
     </tr>`;
 
   tbody.innerHTML = linhaSaldoAnterior + (linhasHtml || '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Sem lançamentos ainda.</td></tr>') + linhaTotal;
 
   const cicloAbertoDados = porCiclo[cicloAberto] || { michelle: 0, casa: 0, matheus: 0 };
-  document.getElementById('fatura-btg-ciclo-aberto').textContent = '— ' + labelFaturaBtg(cicloAberto) + ' (em aberto)';
-  document.getElementById('fatura-btg-michelle-total').textContent = 'R$ ' + fmtDre(cicloAbertoDados.michelle);
-  document.getElementById('fatura-btg-matheus-casa-sub').textContent = 'Casa + Matheus até agora: R$ ' + fmtDre(cicloAbertoDados.casa + cicloAbertoDados.matheus);
+  document.getElementById('fatura-btg-ciclo-aberto').textContent = '- ' + labelFaturaBtgCompleto(cicloAberto);
+  document.getElementById('fatura-btg-michelle-total').textContent = 'R$ ' + fmtFaturaBtg(cicloAbertoDados.michelle);
+  document.getElementById('fatura-btg-matheus-casa-sub').textContent = 'Casa + Matheus - ' + labelFaturaBtgCompleto(cicloAberto) + ': R$ ' + fmtFaturaBtg(cicloAbertoDados.casa + cicloAbertoDados.matheus);
 
   faturaBtgCarregado = true;
 }
