@@ -3713,19 +3713,34 @@ async function calcularPosicaoAtivos(){
 // e ainda não foi usado pra comprar nenhum ativo específico — ou seja, caixa
 // disponível dentro da carteira. Mesma fórmula da célula B2 da aba "Resumo FIIs"
 // da planilha antiga: aportes - compras + rendimentos + vendas - resgates - taxas - multas.
-function categoriaFiisAcoes(fluxo){
-  const pai = categorias.find(c => c.fluxo === fluxo && c.categoria_pai_id === null && c.nome === 'Investimentos');
+// Busca direto no banco (não depende do array global `categorias`, que pode
+// ainda não ter terminado de carregar quando o usuário abre a Posição — isso
+// causava o Saldo Investimento "sumir" os aportes/resgates e oscilar errado).
+async function categoriaFiisAcoesId(fluxo){
+  const { data: pai } = await sb.from('categorias')
+    .select('id')
+    .eq('fluxo', fluxo).is('categoria_pai_id', null).eq('nome', 'Investimentos')
+    .maybeSingle();
   if(!pai) return null;
-  return categorias.find(c => c.fluxo === fluxo && c.categoria_pai_id === pai.id && c.nome === 'FIIs e Ações');
+  const { data: filha } = await sb.from('categorias')
+    .select('id')
+    .eq('fluxo', fluxo).eq('categoria_pai_id', pai.id).eq('nome', 'FIIs e Ações')
+    .maybeSingle();
+  return filha ? filha.id : null;
 }
 
 async function calcularSaldoInvestimento(){
-  const catSaida = categoriaFiisAcoes('saida');
-  const catEntrada = categoriaFiisAcoes('entrada');
+  const [catSaidaId, catEntradaId] = await Promise.all([
+    categoriaFiisAcoesId('saida'),
+    categoriaFiisAcoesId('entrada')
+  ]);
 
+  // Só conta aportes/resgates do Matheus — a Posição/Ativos é a carteira pessoal
+  // dele (ativos_lancamentos não distingue dono), então lançamentos de outros
+  // titulares (ex: Michelle) na mesma categoria não podem entrar nesse saldo.
   const [aportesResp, resgatesResp, ativosResp] = await Promise.all([
-    catSaida ? sb.from('lancamentos').select('valor').eq('fluxo', 'saida').eq('categoria_id', catSaida.id) : Promise.resolve({ data: [] }),
-    catEntrada ? sb.from('lancamentos').select('valor').eq('fluxo', 'entrada').eq('categoria_id', catEntrada.id) : Promise.resolve({ data: [] }),
+    catSaidaId ? sb.from('lancamentos').select('valor').eq('fluxo', 'saida').eq('categoria_id', catSaidaId).eq('dono', 'Matheus') : Promise.resolve({ data: [] }),
+    catEntradaId ? sb.from('lancamentos').select('valor').eq('fluxo', 'entrada').eq('categoria_id', catEntradaId).eq('dono', 'Matheus') : Promise.resolve({ data: [] }),
     sb.from('ativos_lancamentos').select('tipo, valor')
   ]);
 
