@@ -980,6 +980,7 @@
 
       <div id="pos-lista"></div>
       <p class="r-hint">Cotação é manual por enquanto — toca no valor de um ativo pra atualizar. Investido/Rendimento são acumulados desde o início. Toca no nome do grupo pra abrir os ativos.</p>
+      <p class="r-hint">Última atualização de cotações: 19/09/2026. Diferenças de poucos centavos no Saldo Investimento podem ocorrer por arredondamento nos cálculos — não afetam os lançamentos.</p>
     </div>
   </div>
 
@@ -3744,20 +3745,26 @@ async function calcularSaldoInvestimento(){
     sb.from('ativos_lancamentos').select('tipo, valor')
   ]);
 
-  const somaAportes = (aportesResp.data || []).reduce((s, l) => s + Number(l.valor), 0);
-  const somaResgates = (resgatesResp.data || []).reduce((s, l) => s + Number(l.valor), 0);
+  // Soma tudo em centavos (inteiros) e só converte pra reais no final — evita a
+  // deriva de ponto flutuante que aparece ao somar centenas de valores decimais
+  // em JS (não muda nenhum lançamento, só a forma de somar pro card).
+  const centavos = v => Math.round(Number(v) * 100);
 
-  let compras = 0, rendimentos = 0, vendas = 0, taxas = 0, multas = 0;
+  const somaAportesCent = (aportesResp.data || []).reduce((s, l) => s + centavos(l.valor), 0);
+  const somaResgatesCent = (resgatesResp.data || []).reduce((s, l) => s + centavos(l.valor), 0);
+
+  let comprasCent = 0, rendimentosCent = 0, vendasCent = 0, taxasCent = 0, multasCent = 0;
   (ativosResp.data || []).forEach(a => {
-    const v = Number(a.valor);
-    if(a.tipo === 'Compra') compras += v;
-    else if(a.tipo === 'Rendimento') rendimentos += v;
-    else if(a.tipo === 'Venda') vendas += v;
-    else if(a.tipo === 'Taxa') taxas += v;
-    else if(a.tipo === 'Multa') multas += v;
+    const v = centavos(a.valor);
+    if(a.tipo === 'Compra') comprasCent += v;
+    else if(a.tipo === 'Rendimento') rendimentosCent += v;
+    else if(a.tipo === 'Venda') vendasCent += v;
+    else if(a.tipo === 'Taxa') taxasCent += v;
+    else if(a.tipo === 'Multa') multasCent += v;
   });
 
-  return somaAportes - compras + rendimentos + vendas - somaResgates - taxas - multas;
+  const totalCent = somaAportesCent - comprasCent + rendimentosCent + vendasCent - somaResgatesCent - taxasCent - multasCent;
+  return totalCent / 100;
 }
 
 async function carregarPosicao(){
