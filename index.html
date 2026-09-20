@@ -639,7 +639,7 @@
           <tbody id="casa-tbody"></tbody>
         </table>
       </div>
-      <p class="r-hint">Saldo = acumulado do Acerto de Contas até aquele mês. Pessoa = quem está devendo pagar a mais nesse ponto. % de renda calculada por: Matheus = Salário+Benefício; Michelle = Salário+Consulta+Consultoria+Mima Café+Entradas Diversas, menos Aluguel de Sala+CRN+Software Nutrição (redutoras da Consulta). Real Matheus já vem líquido de ajustes manuais (reembolsos da Michelle pagos por fora do sistema, jul/25–ago/26) — registrados na tabela casa_ajustes_manuais. Ainda vamos revisar essa lista juntos.</p>
+      <p class="r-hint">Saldo = acumulado do Acerto de Contas até aquele mês. Pessoa = quem está devendo pagar a mais nesse ponto. % de renda calculada por: Matheus = Salário+Benefício; Michelle = Salário+Consulta+Consultoria+Mima Café+Entradas Diversas, menos Aluguel de Sala+CRN+Software Nutrição (redutoras da Consulta). Real Matheus já vem líquido de ajustes manuais (reembolsos da Michelle pagos por fora do sistema, jul/25–ago/26) — registrados na tabela casa_ajustes_manuais. Ainda vamos revisar essa lista juntos. O mês corrente só entra na conta depois de fechado (mês anterior pra frente) — evita que renda ainda não lançada distorça o saldo.</p>
     </div>
   </div>
 
@@ -1174,7 +1174,19 @@ const CASA_INICIO = '2025-04';
 
 let faturaBtgCarregado = false;
 const BTG_CONTA_ID = '7dd6f54a-fb5c-41bd-8e33-d3d453ec0a71'; // conta "BTG +" (cartão compartilhado)
-const FATURA_BTG_INICIO = '2026-09'; // primeira fatura acompanhada nesta aba (ciclo 11/ago–10/set/26)
+// Corte dinâmico: mostra sempre "o mês em que eu tô" pra frente. Uma fatura some
+// da tela (vira "Saldo anterior") a partir do dia 15 do mês dela — dia do pagamento.
+// Ex: ciclo "2026-09" (vencimento 15/09) some da tela a partir de 15/09.
+function inicioFaturaBtgAtual(){
+  const hoje = new Date();
+  let ano = hoje.getFullYear();
+  let mes = hoje.getMonth() + 1;
+  if(hoje.getDate() >= 15){
+    mes++;
+    if(mes > 12){ mes = 1; ano++; }
+  }
+  return ano + '-' + String(mes).padStart(2, '0');
+}
 
 const MOEDAS = ['BRL', 'USD', 'CLP', 'ARS', 'EUR'];
 
@@ -2139,6 +2151,19 @@ function mesEfetivoCasa(chaveReal){
   return chaveReal < CASA_INICIO ? CASA_INICIO : chaveReal;
 }
 
+// O mês corrente entra na conta só depois de fechado — enquanto está em
+// andamento, salário/receita de um dos dois pode ainda não estar lançado,
+// e isso zera o % de renda dele(a) e distorce o acumulado pro resto da vida
+// (foi o que causou o saldo esquisito de set/26). Por isso o Rateio Casa
+// sempre para no último mês JÁ FECHADO (mês anterior ao atual).
+function mesFechadoCasa(){
+  const agora = new Date();
+  let ano = agora.getFullYear();
+  let mes = agora.getMonth(); // getMonth() é 0-indexado pro mês atual, ou seja já é o mês anterior em base 1
+  if(mes === 0){ mes = 12; ano -= 1; }
+  return ano + '-' + String(mes).padStart(2, '0');
+}
+
 function taxaCasaMes(moeda, chaveReal, cotacoesMensais, config){
   if(moeda === 'BRL') return 1;
   const [ano, mes] = chaveReal.split('-').map(Number);
@@ -2267,8 +2292,7 @@ async function carregarCasa(){
   });
   casaAjustesManuais = ajusteRes.data || [];
 
-  const mesAtualChave = agora.getFullYear() + '-' + String(agora.getMonth() + 1).padStart(2, '0');
-  const meses = gerarMesesCasa(CASA_INICIO, mesAtualChave);
+  const meses = gerarMesesCasa(CASA_INICIO, mesFechadoCasa());
 
   let acumulado = 0;
   const linhas = meses.map(chave => {
@@ -2490,10 +2514,11 @@ async function carregarFaturaBtg(){
   const totalEntradaGeral = (entradasData || []).reduce((s, l) => s + Number(l.valor), 0);
   const totalSaidaGeral = lancamentos.reduce((s, l) => s + Number(l.valor), 0);
 
+  const inicioFaturaBtg = inicioFaturaBtgAtual();
   const porCiclo = {};
   lancamentos.forEach(l => {
     const ciclo = cicloBtg(l.data_hora);
-    if(ciclo < FATURA_BTG_INICIO) return;
+    if(ciclo < inicioFaturaBtg) return;
     if(!porCiclo[ciclo]) porCiclo[ciclo] = { michelle: 0, casa: 0, matheus: 0 };
     const valor = Number(l.valor);
     if(l.dono === 'Michelle') porCiclo[ciclo].michelle += valor;
@@ -2545,10 +2570,12 @@ async function carregarFaturaBtg(){
 
   tbody.innerHTML = linhaSaldoAnterior + (linhasHtml || '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Sem lançamentos ainda.</td></tr>') + linhaTotal;
 
-  const cicloAbertoDados = porCiclo[cicloAberto] || { michelle: 0, casa: 0, matheus: 0 };
-  document.getElementById('fatura-btg-ciclo-aberto').textContent = '- ' + labelFaturaBtgCompleto(cicloAberto);
-  document.getElementById('fatura-btg-michelle-total').textContent = 'R$ ' + fmtFaturaBtg(cicloAbertoDados.michelle);
-  document.getElementById('fatura-btg-matheus-casa-sub').textContent = 'Casa + Matheus - ' + labelFaturaBtgCompleto(cicloAberto) + ': R$ ' + fmtFaturaBtg(cicloAbertoDados.casa + cicloAbertoDados.matheus);
+  // Cards de destaque somam os mesmos totais da linha "Total" da tabela (todas as
+  // faturas em aberto na tela, sem contar Saldo anterior) — assim michelle+casa+matheus
+  // sempre bate com o total exibido, nunca só o ciclo em aberto isoladamente.
+  document.getElementById('fatura-btg-ciclo-aberto').textContent = '';
+  document.getElementById('fatura-btg-michelle-total').textContent = 'R$ ' + fmtFaturaBtg(totalMichelle);
+  document.getElementById('fatura-btg-matheus-casa-sub').textContent = 'Casa + Matheus (em aberto): R$ ' + fmtFaturaBtg(totalCasa + totalMatheus);
 
   faturaBtgCarregado = true;
 }
