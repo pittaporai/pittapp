@@ -1143,6 +1143,12 @@ let fluxoAtual = 'entrada';
 let resumoCarregado = false;
 let patrimonioMichelleCarregado = false;
 let perfilAtual = null;
+let perfilAtualPromise = null;
+function garantirPerfil(){
+  if(perfilAtual) return Promise.resolve(perfilAtual);
+  if(!perfilAtualPromise) perfilAtualPromise = carregarPerfil().then(() => perfilAtual);
+  return perfilAtualPromise;
+}
 let entradaEditadaManualmente = false;
 let lancamentosCarregados = false;
 let lancamentosTodos = [];
@@ -2907,6 +2913,13 @@ async function salvarTreino(){
   btn.disabled = true;
   showMsgTreino('Salvando...', '');
 
+  await garantirPerfil();
+  if(!perfilAtual){
+    btn.disabled = false;
+    showMsgTreino('Não foi possível identificar seu perfil. Recarrega a página e tenta de novo.', 'err');
+    return;
+  }
+
   const { error } = await sb.from('treinos').insert([{
     data_hora: dataObj.toISOString(),
     aerobico: aerobico,
@@ -2915,7 +2928,8 @@ async function salvarTreino(){
     distancia_km: (distanciaKm === null || isNaN(distanciaKm)) ? null : distanciaKm,
     tipo_aerobico: tipoAerobico,
     grupos_musculares: grupos,
-    observacao: obs
+    observacao: obs,
+    titular: perfilAtual.nome
   }]);
 
   btn.disabled = false;
@@ -2943,16 +2957,23 @@ async function carregarTreinosRealizados(){
   const de = document.getElementById('tf-data-de').value;
   const ate = document.getElementById('tf-data-ate').value;
 
+  const listaEl = document.getElementById('tf-lista');
+  listaEl.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:20px 0;">Carregando...</p>';
+
+  await garantirPerfil();
+  if(!perfilAtual){
+    listaEl.innerHTML = '<p style="color:var(--red);font-size:13px;">Não foi possível identificar seu perfil. Recarrega a página.</p>';
+    return;
+  }
+
   let q = sb.from('treinos')
     .select('id, data_hora, aerobico, tempo_min, tempo_seg, distancia_km, tipo_aerobico, grupos_musculares, observacao')
+    .eq('titular', perfilAtual.nome)
     .order('data_hora', { ascending: false })
     .limit(1000);
 
   if(de) q = q.gte('data_hora', de + 'T00:00:00');
   if(ate) q = q.lte('data_hora', ate + 'T23:59:59');
-
-  const listaEl = document.getElementById('tf-lista');
-  listaEl.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:20px 0;">Carregando...</p>';
 
   const { data, error } = await q;
 
@@ -3191,12 +3212,19 @@ async function carregarAnalise(){
 
   hintEl.textContent = 'Carregando...';
 
+  await garantirPerfil();
+  if(!perfilAtual){
+    hintEl.textContent = 'Não foi possível identificar seu perfil. Recarrega a página.';
+    return;
+  }
+
   let treinos = [];
   let erro = null;
   const PAGE = 1000;
   for(let from = 0; ; from += PAGE){
     const { data: pagina, error } = await sb.from('treinos')
       .select('data_hora, aerobico, grupos_musculares')
+      .eq('titular', perfilAtual.nome)
       .gte('data_hora', de + 'T00:00:00')
       .lte('data_hora', ate + 'T23:59:59')
       .order('data_hora')
@@ -3481,7 +3509,7 @@ function aplicarRestricaoPerfil(){
   document.querySelectorAll('.menu-nav .menu-section').forEach(sec => { sec.style.display = ''; });
 
   if(restrito){
-    const idsPermitidos = ['menu-btn-resumo', 'menu-btn-lancar'];
+    const idsPermitidos = ['menu-btn-resumo', 'menu-btn-lancar', 'menu-btn-lancamentos', 'menu-btn-treinos', 'menu-btn-analise'];
     document.querySelectorAll('.menu-nav button').forEach(btn => {
       if(!idsPermitidos.includes(btn.id)) btn.style.display = 'none';
     });
@@ -3510,6 +3538,8 @@ function aplicarRestricaoPerfil(){
 async function esqueciPin(){
   localStorage.removeItem('pittapp_pin_hash');
   await sb.auth.signOut();
+  perfilAtual = null;
+  perfilAtualPromise = null;
   pinDigitado = '';
   document.getElementById('login-email').value = '';
   document.getElementById('login-senha').value = '';
@@ -3518,6 +3548,8 @@ async function esqueciPin(){
 
 async function sair(){
   await sb.auth.signOut();
+  perfilAtual = null;
+  perfilAtualPromise = null;
   document.getElementById('login-email').value = '';
   document.getElementById('login-senha').value = '';
   irPara('login');
