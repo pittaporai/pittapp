@@ -1639,7 +1639,7 @@ async function carregarResumo(){
   let e2 = null;
   const PAGE = 1000;
   for(let from = 0; ; from += PAGE){
-    const { data: pagina, error: erroPagina } = await sb.from('lancamentos').select('conta_id, fluxo, valor, moeda').range(from, from + PAGE - 1);
+    const { data: pagina, error: erroPagina } = await sb.from('lancamentos').select('conta_id, fluxo, valor, moeda').order('id').range(from, from + PAGE - 1);
     if(erroPagina){ e2 = erroPagina; break; }
     lancs = lancs.concat(pagina);
     if(pagina.length < PAGE) break;
@@ -1771,7 +1771,7 @@ async function carregarPatrimonioMichelle(){
   let e2 = null;
   const PAGE = 1000;
   for(let from = 0; ; from += PAGE){
-    const { data: pagina, error: erroPagina } = await sb.from('lancamentos').select('conta_id, fluxo, valor, moeda').range(from, from + PAGE - 1);
+    const { data: pagina, error: erroPagina } = await sb.from('lancamentos').select('conta_id, fluxo, valor, moeda').order('id').range(from, from + PAGE - 1);
     if(erroPagina){ e2 = erroPagina; break; }
     lancs = lancs.concat(pagina);
     if(pagina.length < PAGE) break;
@@ -2224,6 +2224,7 @@ async function carregarCasa(){
     const { data: pagina, error: erroPagina } = await sb.from('lancamentos')
       .select('fluxo, valor, moeda, data_hora, dono, categorias(nome, grupo), contas(titular)')
       .lte('data_hora', nowIso)
+      .order('id')
       .range(from, from + PAGE - 1);
     if(erroPagina){ erroLanc = erroPagina; break; }
     lancamentos = lancamentos.concat(pagina);
@@ -3827,7 +3828,7 @@ async function calcularPosicaoAtivos(){
   let erro = null;
   const PAGE = 1000;
   for(let from = 0; ; from += PAGE){
-    const { data: pagina, error } = await sb.from('ativos_lancamentos').select('tipo, ticker, valor, quantidade').range(from, from + PAGE - 1);
+    const { data: pagina, error } = await sb.from('ativos_lancamentos').select('tipo, ticker, valor, quantidade').order('id').range(from, from + PAGE - 1);
     if(error){ erro = error; break; }
     lancs = lancs.concat(pagina);
     if(pagina.length < PAGE) break;
