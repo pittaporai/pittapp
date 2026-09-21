@@ -648,9 +648,10 @@
       <h1 class="r-title">💳 Fatura BTG</h1>
 
       <div class="destaque-card">
-        <div class="destaque-titulo">Michelle <span id="fatura-btg-ciclo-aberto" style="font-weight:400;opacity:.75;"></span></div>
-        <div class="destaque-total" id="fatura-btg-michelle-total">—</div>
-        <p class="sub" id="fatura-btg-matheus-casa-sub" style="margin:-8px 0 0;text-align:center;"></p>
+        <div class="destaque-titulo">Total</div>
+        <div class="destaque-total" id="fatura-btg-total-total">—</div>
+        <p class="sub" id="fatura-btg-matheus-casa-sub" style="margin:-8px 0 4px;text-align:center;"></p>
+        <p class="sub" id="fatura-btg-michelle-sub" style="margin:0;text-align:center;font-weight:600;"></p>
       </div>
 
       <div class="dre-scroll">
@@ -908,6 +909,16 @@
       <p class="chart-titulo">Tipos de treino</p>
       <div style="position:relative;height:280px;margin-top:8px;">
         <canvas id="analise-chart"></canvas>
+      </div>
+
+      <p class="chart-titulo">Aeróbico</p>
+      <div style="position:relative;height:220px;margin-top:8px;">
+        <canvas id="analise-chart-aerobico"></canvas>
+      </div>
+
+      <p class="chart-titulo">Pace Corridas</p>
+      <div style="position:relative;height:220px;margin-top:8px;">
+        <canvas id="analise-chart-pace"></canvas>
       </div>
 
       <p class="r-hint" id="an-hint"></p>
@@ -2550,15 +2561,6 @@ async function carregarFaturaBtg(){
 
   const saldoAnterior = (totalSaidaGeral - totalEntradaGeral) - (totalMichelle + totalCasa + totalMatheus);
 
-  const linhaSaldoAnterior = `
-    <tr class="fatura-saldo-anterior">
-      <td>Saldo anterior</td>
-      <td>—</td>
-      <td>—</td>
-      <td>—</td>
-      <td style="font-weight:700;">${fmtFaturaBtg(saldoAnterior)}</td>
-    </tr>`;
-
   const linhaTotal = `
     <tr class="fatura-total">
       <td>Total</td>
@@ -2568,14 +2570,17 @@ async function carregarFaturaBtg(){
       <td>${fmtFaturaBtg(saldoAnterior + totalMichelle + totalCasa + totalMatheus)}</td>
     </tr>`;
 
-  tbody.innerHTML = linhaSaldoAnterior + (linhasHtml || '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Sem lançamentos ainda.</td></tr>') + linhaTotal;
+  // "Saldo anterior" some da tabela (fica zerado desde o ajuste de set/26), mas
+  // continua entrando na conta do Total abaixo como rede de segurança caso volte
+  // a existir um resíduo no futuro.
+  tbody.innerHTML = (linhasHtml || '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Sem lançamentos ainda.</td></tr>') + linhaTotal;
 
-  // Cards de destaque somam os mesmos totais da linha "Total" da tabela (todas as
-  // faturas em aberto na tela, sem contar Saldo anterior) — assim michelle+casa+matheus
-  // sempre bate com o total exibido, nunca só o ciclo em aberto isoladamente.
-  document.getElementById('fatura-btg-ciclo-aberto').textContent = '';
-  document.getElementById('fatura-btg-michelle-total').textContent = 'R$ ' + fmtFaturaBtg(totalMichelle);
-  document.getElementById('fatura-btg-matheus-casa-sub').textContent = 'Casa + Matheus (em aberto): R$ ' + fmtFaturaBtg(totalCasa + totalMatheus);
+  // Card de destaque: Total é o número principal (bate com a linha Total da
+  // tabela); abaixo, "seu valor + Casa" (o que você cobre) e o quanto a
+  // Michelle está devendo em aberto, cada um em sua própria linha.
+  document.getElementById('fatura-btg-total-total').textContent = 'R$ ' + fmtFaturaBtg(saldoAnterior + totalMichelle + totalCasa + totalMatheus);
+  document.getElementById('fatura-btg-matheus-casa-sub').textContent = 'Seu valor + Casa: R$ ' + fmtFaturaBtg(totalCasa + totalMatheus);
+  document.getElementById('fatura-btg-michelle-sub').textContent = 'Michelle (em aberto): R$ ' + fmtFaturaBtg(totalMichelle);
 
   faturaBtgCarregado = true;
 }
@@ -3223,6 +3228,8 @@ async function excluirTreino(){
 
 let analiseChart = null;
 let analiseChartTotal = null;
+let analiseChartAerobico = null;
+let analiseChartPace = null;
 const NOMES_MES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
 
 function setDefaultAnaliseDatas(){
@@ -3250,7 +3257,7 @@ async function carregarAnalise(){
   const PAGE = 1000;
   for(let from = 0; ; from += PAGE){
     const { data: pagina, error } = await sb.from('treinos')
-      .select('data_hora, aerobico, grupos_musculares')
+      .select('data_hora, aerobico, grupos_musculares, tipo_aerobico, tempo_min, tempo_seg, distancia_km')
       .eq('titular', perfilAtual.nome)
       .gte('data_hora', de + 'T00:00:00')
       .lte('data_hora', ate + 'T23:59:59')
@@ -3279,7 +3286,10 @@ async function carregarAnalise(){
 
   const contagem = {};
   const contagemTotal = {};
-  meses.forEach(m => { contagem[m] = { musculacao: 0, aerobico: 0, futebol: 0, crossfit: 0 }; contagemTotal[m] = 0; });
+  const aerobicoPorMes = {};
+  const tiposAerobicoSet = new Set();
+  const corridas = [];
+  meses.forEach(m => { contagem[m] = { musculacao: 0, aerobico: 0, futebol: 0, crossfit: 0 }; contagemTotal[m] = 0; aerobicoPorMes[m] = {}; });
 
   treinos.forEach(t => {
     const chave = t.data_hora.slice(0, 7);
@@ -3290,6 +3300,16 @@ async function carregarAnalise(){
     if(grupos.includes('Futebol')) contagem[chave].futebol++;
     if(grupos.includes('Crossfit')) contagem[chave].crossfit++;
     if(grupos.some(g => TIPOS_MUSCULACAO.includes(g))) contagem[chave].musculacao++;
+
+    if(t.aerobico && t.tipo_aerobico){
+      tiposAerobicoSet.add(t.tipo_aerobico);
+      aerobicoPorMes[chave][t.tipo_aerobico] = (aerobicoPorMes[chave][t.tipo_aerobico] || 0) + 1;
+
+      if(t.tipo_aerobico === 'Corrida' && Number(t.distancia_km) > 0){
+        const minutos = Number(t.tempo_min || 0) + Number(t.tempo_seg || 0) / 60;
+        corridas.push({ data: t.data_hora.slice(0, 10), pace: minutos / Number(t.distancia_km) });
+      }
+    }
   });
 
   const labels = meses.map(m => {
@@ -3398,6 +3418,104 @@ async function carregarAnalise(){
             align: 'top',
             font: { size: 10, weight: '600' },
             formatter: (v) => v > 0 ? v : ''
+          }
+        }
+      },
+      plugins: (typeof ChartDataLabels !== 'undefined') ? [ChartDataLabels] : []
+    });
+  }
+
+  // ---------- Gráfico Aeróbico: quantidade por tipo, por mês ----------
+  const ordemTiposAerobico = ['Corrida', 'Caminhada', 'Esteira', 'Bike', 'Natação'];
+  const tiposAerobico = Array.from(tiposAerobicoSet).sort((a, b) => {
+    const ia = ordemTiposAerobico.indexOf(a), ib = ordemTiposAerobico.indexOf(b);
+    if(ia === -1 && ib === -1) return a.localeCompare(b);
+    if(ia === -1) return 1;
+    if(ib === -1) return -1;
+    return ia - ib;
+  });
+  const coresAerobico = ['#E8622C', '#F2A65A', '#B5654A', '#7A3B4A', '#C98A3E', '#9A5A3A'];
+  const datasetsAerobico = tiposAerobico.map((tipo, i) => ({
+    label: tipo,
+    data: meses.map(m => aerobicoPorMes[m][tipo] || 0),
+    backgroundColor: coresAerobico[i % coresAerobico.length]
+  }));
+
+  const ctxAerobico = document.getElementById('analise-chart-aerobico').getContext('2d');
+  if(analiseChartAerobico){
+    analiseChartAerobico.data.labels = labels;
+    analiseChartAerobico.data.datasets = datasetsAerobico;
+    analiseChartAerobico.update();
+  } else {
+    analiseChartAerobico = new Chart(ctxAerobico, {
+      type: 'bar',
+      data: { labels: labels, datasets: datasetsAerobico },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: { ticks: { color: '#9A9AA0' }, grid: { color: '#2A2A2E' } },
+          y: { beginAtZero: true, ticks: { color: '#9A9AA0', precision: 0 }, grid: { color: '#2A2A2E' } }
+        },
+        plugins: {
+          legend: { labels: { color: '#F2F0EC' } },
+          datalabels: {
+            color: '#F2F0EC',
+            anchor: 'end',
+            align: 'top',
+            font: { size: 9, weight: '600' },
+            formatter: (v) => v > 0 ? v : ''
+          }
+        }
+      },
+      plugins: (typeof ChartDataLabels !== 'undefined') ? [ChartDataLabels] : []
+    });
+  }
+
+  // ---------- Gráfico Pace Corridas: linha, só datas com treino de Corrida ----------
+  corridas.sort((a, b) => a.data.localeCompare(b.data));
+  const paceLabels = corridas.map(c => {
+    const [ano, mes, dia] = c.data.split('-');
+    return dia + '/' + mes + '/' + ano.slice(2);
+  });
+  const paceData = corridas.map(c => Number(c.pace.toFixed(2)));
+
+  const ctxPace = document.getElementById('analise-chart-pace').getContext('2d');
+  if(analiseChartPace){
+    analiseChartPace.data.labels = paceLabels;
+    analiseChartPace.data.datasets[0].data = paceData;
+    analiseChartPace.update();
+  } else {
+    analiseChartPace = new Chart(ctxPace, {
+      type: 'line',
+      data: {
+        labels: paceLabels,
+        datasets: [{
+          label: 'Pace (min/km)',
+          data: paceData,
+          borderColor: '#E8622C',
+          backgroundColor: '#E8622C33',
+          fill: true,
+          tension: 0.25,
+          pointRadius: 3,
+          pointBackgroundColor: '#E8622C'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: { type: 'category', ticks: { color: '#9A9AA0', font: { size: 10 } }, grid: { display: false } },
+          y: { ticks: { color: '#9A9AA0', callback: v => v + ' min/km' }, grid: { color: '#2A2A2E' } }
+        },
+        plugins: {
+          legend: { display: false },
+          datalabels: {
+            color: '#F2F0EC',
+            anchor: 'end',
+            align: 'top',
+            font: { size: 9, weight: '600' },
+            formatter: (v) => v.toFixed(2)
           }
         }
       },
