@@ -135,7 +135,7 @@
   .menu-btn{background:none;border:none;color:var(--text);font-size:22px;line-height:1;cursor:pointer;padding:6px 10px 6px 0;}
   .menu-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:40;}
   .menu-overlay.active{display:block;}
-  .menu-drawer{position:fixed;top:0;left:0;bottom:0;width:250px;background:var(--panel);border-right:1px solid var(--line);z-index:50;transform:translateX(-100%);transition:transform .22s ease;padding:22px 16px;}
+  .menu-drawer{position:fixed;top:0;left:0;bottom:0;width:250px;background:var(--panel);border-right:1px solid var(--line);z-index:50;transform:translateX(-100%);transition:transform .22s ease;padding:22px 16px;overflow-y:auto;-webkit-overflow-scrolling:touch;}
   .menu-drawer.active{transform:translateX(0);}
   .menu-title{font-size:18px;margin:0 0 22px;}
   .menu-nav{display:flex;flex-direction:column;gap:2px;}
@@ -202,6 +202,17 @@
   .detalhe-sheet.active{display:block;}
   button.excluir{width:100%;padding:14px;border:none;border-radius:10px;background:transparent;border:1px solid var(--red);color:var(--red);font-size:15px;font-weight:600;cursor:pointer;margin-top:10px;}
   button.excluir:disabled{opacity:.5;}
+
+  /* ---------- Layout desktop (fase 1: responsivo, mesma estrutura/lógica) ---------- */
+  @media (min-width: 900px){
+    body{padding-left:calc(250px + 32px);}
+    .menu-btn{display:none;}
+    .menu-overlay{display:none !important;}
+    .menu-drawer{transform:none;box-shadow:2px 0 16px rgba(0,0,0,.25);}
+    .top-bar{max-width:900px;}
+    .card{max-width:900px;}
+    .sair-link{max-width:900px;}
+  }
 </style>
 </head>
 <body>
@@ -271,6 +282,7 @@
       <p class="menu-section">Histórico</p>
       <button id="menu-btn-lancamentos" onclick="irParaView('lancamentos')">💵 Histórico Lançamentos</button>
       <button id="menu-btn-historico" onclick="irParaView('historico')">📈 Histórico Investimentos</button>
+      <button id="menu-btn-historico-treinos" onclick="irParaView('historico-treinos')">💪 Histórico Treinos</button>
 
       <p class="menu-section">Ajustes</p>
       <button id="menu-btn-ajustes" onclick="irParaView('ajustes')">📈 Editar FIIs e Ações</button>
@@ -474,6 +486,14 @@
           <label>Moeda de saída</label>
           <select id="moeda-saida"></select>
         </div>
+        <div class="field">
+          <label>Categoria (saída)</label>
+          <select id="dono-saida">
+            <option value="Matheus">👽 Matheus</option>
+            <option value="Casa">🏠 Casa</option>
+            <option value="Michelle">🙍🏻‍♀️ Michelle</option>
+          </select>
+        </div>
 
         <p class="subhead-mini">Entrada</p>
         <div class="field">
@@ -487,6 +507,14 @@
         <div class="field">
           <label>Moeda de entrada</label>
           <select id="moeda-entrada"></select>
+        </div>
+        <div class="field">
+          <label>Categoria (entrada)</label>
+          <select id="dono-entrada">
+            <option value="Matheus">👽 Matheus</option>
+            <option value="Casa">🏠 Casa</option>
+            <option value="Michelle">🙍🏻‍♀️ Michelle</option>
+          </select>
         </div>
 
         <p class="r-hint" style="margin-top:0;">Câmbio: pra converter moeda dentro da mesma conta (ex: Wise em USD virando CLP), escolhe a mesma conta nos dois lados e moedas diferentes.</p>
@@ -792,8 +820,13 @@
 
       <button class="submit" id="btn-salvar-treino" onclick="salvarTreino()">Salvar treino</button>
       <div id="msg-treino"></div>
+    </div>
+  </div>
 
-      <p class="subhead-mini" style="margin-top:28px;">Treinos Realizados</p>
+  <div id="view-historico-treinos" class="view">
+    <div class="card">
+      <h1>💪 Histórico Treinos</h1>
+      <p class="sub">Treinos realizados</p>
 
       <div class="field">
         <input id="tf-texto" type="text" placeholder="Buscar por observação, tipo, grupo..." oninput="filtrarTreinos()" />
@@ -1220,6 +1253,7 @@ function irParaView(nome){
   document.getElementById('menu-btn-ativos').classList.toggle('active', nome === 'ativos');
   document.getElementById('menu-btn-posicao').classList.toggle('active', nome === 'posicao');
   document.getElementById('menu-btn-historico').classList.toggle('active', nome === 'historico');
+  document.getElementById('menu-btn-historico-treinos').classList.toggle('active', nome === 'historico-treinos');
   document.getElementById('menu-btn-ajustes').classList.toggle('active', nome === 'ajustes');
   document.getElementById('menu-btn-ajustes-grupos').classList.toggle('active', nome === 'ajustes-grupos');
   document.getElementById('menu-btn-ajustes-bancos').classList.toggle('active', nome === 'ajustes-bancos');
@@ -1250,7 +1284,7 @@ function irParaView(nome){
   if(nome === 'historico' && !historicoCarregado){
     carregarHistorico();
   }
-  if(nome === 'treinos' && !treinosRealizadosCarregado){
+  if(nome === 'historico-treinos' && !treinosRealizadosCarregado){
     carregarTreinosRealizados();
   }
   if(nome === 'ajustes'){
@@ -1323,6 +1357,13 @@ function setFluxo(tipo){
   if(tipo === 'entre_contas'){
     padrao.style.display = 'none';
     entreContas.style.display = 'block';
+    // Categoria default = quem tá logado (evita o transfer da Michelle aparecer
+    // gravado como Matheus só porque ela esqueceu de trocar o campo).
+    const donoPadrao = (perfilAtual && (perfilAtual.nome === 'Michelle' || perfilAtual.nome === 'Matheus')) ? perfilAtual.nome : 'Matheus';
+    const selSaida = document.getElementById('dono-saida');
+    const selEntrada = document.getElementById('dono-entrada');
+    if(selSaida) selSaida.value = donoPadrao;
+    if(selEntrada) selEntrada.value = donoPadrao;
     return;
   }
   padrao.style.display = 'block';
@@ -1489,6 +1530,8 @@ async function salvarEntreContas(){
   const valorEntrada = parseValor(document.getElementById('valor-entrada').value);
   const moedaSaida = document.getElementById('moeda-saida').value;
   const moedaEntrada = document.getElementById('moeda-entrada').value;
+  const donoSaida = document.getElementById('dono-saida').value;
+  const donoEntrada = document.getElementById('dono-entrada').value;
   const dataHoraIso = getDataHoraIso();
   const obs = document.getElementById('obs').value || null;
 
@@ -1516,8 +1559,8 @@ async function salvarEntreContas(){
   showMsg('Salvando...', '');
 
   const { error } = await sb.from('lancamentos').insert([
-    { fluxo: 'saida', valor: valorSaida, categoria_id: catSaida.id, conta_id: contaSaidaId, moeda: moedaSaida, dono: 'Matheus', data_hora: dataHoraIso, observacao: obs },
-    { fluxo: 'entrada', valor: valorEntrada, categoria_id: catEntrada.id, conta_id: contaEntradaId, moeda: moedaEntrada, dono: 'Matheus', data_hora: dataHoraIso, observacao: obs }
+    { fluxo: 'saida', valor: valorSaida, categoria_id: catSaida.id, conta_id: contaSaidaId, moeda: moedaSaida, dono: donoSaida, data_hora: dataHoraIso, observacao: obs },
+    { fluxo: 'entrada', valor: valorEntrada, categoria_id: catEntrada.id, conta_id: contaEntradaId, moeda: moedaEntrada, dono: donoEntrada, data_hora: dataHoraIso, observacao: obs }
   ]);
 
   btn.disabled = false;
@@ -3655,7 +3698,7 @@ function aplicarRestricaoPerfil(){
   document.querySelectorAll('.menu-nav .menu-section').forEach(sec => { sec.style.display = ''; });
 
   if(restrito){
-    const idsPermitidos = ['menu-btn-resumo', 'menu-btn-lancar', 'menu-btn-lancamentos', 'menu-btn-treinos', 'menu-btn-analise'];
+    const idsPermitidos = ['menu-btn-resumo', 'menu-btn-lancar', 'menu-btn-lancamentos', 'menu-btn-treinos', 'menu-btn-historico-treinos', 'menu-btn-analise'];
     document.querySelectorAll('.menu-nav button').forEach(btn => {
       if(!idsPermitidos.includes(btn.id)) btn.style.display = 'none';
     });
