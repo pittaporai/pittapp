@@ -91,9 +91,10 @@
   .dre-table th:nth-child(5){background:var(--orange-pastel);color:var(--orange-pastel-text);}
   .dre-table td:nth-child(4){background:rgba(232,98,44,0.09);font-weight:700;}
   .dre-table td:nth-child(5){background:rgba(240,168,120,0.13);font-weight:700;}
-  /* Casa: só 4 colunas (Mês/Casa/Saldo/Pessoa) — a 4ª é texto (nome), não deve herdar o destaque laranja acima */
-  .casa-table th:nth-child(4){background:transparent;}
-  .casa-table td:nth-child(4){background:transparent;text-align:center;font-weight:600;}
+  /* Casa: só 4 colunas (Mês/Casa/Saldo/Pessoa) — a 4ª é texto (nome), não deve herdar o destaque laranja acima; as 4 colunas usam o mesmo fundo preto */
+  .casa-table td{background:#000;}
+  .casa-table th:nth-child(4){background:#000;}
+  .casa-table td:nth-child(4){background:#000;text-align:center;font-weight:600;}
   /* Nível 1 — Receitas/Despesas: cinza mais forte, cabeçalho de grupo */
   .dre-row-l1{background:#333338;color:#fff;font-weight:700;cursor:pointer;}
   .dre-row-l1 td:nth-child(4){background:rgba(232,98,44,0.30);}
@@ -658,6 +659,13 @@
             <option value="">Todos (grupo inteiro)</option>
           </select>
         </div>
+      </div>
+
+      <div class="destaque-sub" id="dre-chart-cards" style="margin:14px 0 4px;">
+        <div class="destaque-sub-item"><span class="num" id="dre-card-orcado">–</span><span class="lbl">Orçado (ano)</span></div>
+        <div class="destaque-sub-item"><span class="num" id="dre-card-ytd">–</span><span class="lbl">Orçado YTD</span></div>
+        <div class="destaque-sub-item"><span class="num" id="dre-card-realizado" style="color:var(--orange);">–</span><span class="lbl">Realizado</span></div>
+        <div class="destaque-sub-item"><span class="num" id="dre-card-delta">–</span><span class="lbl">Δ (Real. − YTD)</span></div>
       </div>
 
       <div style="position:relative;height:230px;margin-top:12px;">
@@ -2205,13 +2213,31 @@ async function atualizarGraficosDre(){
 
   const orcadoAnual = sub ? sub.orcado : grupo.orcado;
   const orcadoMensal = orcadoAnual / 12;
-  // Despesa: orçado também vai negativo, pro lado bater com o realizado no gráfico.
-  const orcadoMeses = Array(12).fill(fluxo === 'saida' ? -orcadoMensal : orcadoMensal);
+  // orcamento_dre já guarda despesa com valor negativo (e receita positivo) —
+  // não inverter de novo aqui, senão o orçado fica do lado oposto do realizado.
+  const orcadoMeses = Array(12).fill(orcadoMensal);
 
   const lancamentos = await garantirLancamentos2026();
   const grupoDescricao = grupo.descricao;
   const subDescricao = sub ? sub.descricao : null;
   const realizadoMeses = realizadoMensal(lancamentos, fluxo, grupoDescricao, subDescricao, categoria);
+
+  // Cards de resumo (Orçado ano / YTD / Realizado / Delta) da seleção atual —
+  // orçado e YTD ainda não são quebrados por categoria (só o Realizado filtra).
+  const orcadoYtd = sub ? sub.orcado_ytd : grupo.orcado_ytd;
+  const realizadoTotalAno = realizadoMeses.reduce((s, v) => s + v, 0);
+  const deltaCards = realizadoTotalAno - orcadoYtd;
+  const cardOrcadoEl = document.getElementById('dre-card-orcado');
+  const cardYtdEl = document.getElementById('dre-card-ytd');
+  const cardRealizadoEl = document.getElementById('dre-card-realizado');
+  const cardDeltaEl = document.getElementById('dre-card-delta');
+  if(cardOrcadoEl) cardOrcadoEl.textContent = fmtDre(orcadoAnual);
+  if(cardYtdEl) cardYtdEl.textContent = fmtDre(orcadoYtd);
+  if(cardRealizadoEl) cardRealizadoEl.textContent = fmtDre(realizadoTotalAno);
+  if(cardDeltaEl){
+    cardDeltaEl.innerHTML = setaDelta(deltaCards) + fmtDre(deltaCards);
+    cardDeltaEl.style.color = 'var(--text)';
+  }
 
   const labels = NOMES_MES_CURTO;
 
@@ -2528,7 +2554,9 @@ async function carregarCasa(){
   if(typeof Chart === 'undefined') { casaCarregado = true; return; }
 
   const labels = linhas.map(l => labelMesCasa(l.chave));
-  const fmtMil = v => (v / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  // dataAcumulado já vem dividido por 1000 — fmtMil só formata, não divide de novo
+  // (senão o rótulo/eixo mostra "0,0k" pra tudo).
+  const fmtMil = v => v.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
   // Eixo em milhares (3.576 vira "3,6k") pra caber mais fácil no espaço do gráfico.
   const dataAcumulado = linhas.map(l => l.acumulado / 1000);
   const saldoAtual = linhas.length ? linhas[linhas.length - 1].acumulado : 0;
