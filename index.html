@@ -148,6 +148,11 @@
 
   .lf-row{display:flex;gap:10px;}
   .lf-row .field{flex:1;}
+  .ios-toggle{display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;color:var(--gray1);margin:14px 0;user-select:none;}
+  .ios-toggle .track{width:44px;height:26px;min-width:44px;background:var(--panel-2);border-radius:999px;position:relative;transition:background .2s;}
+  .ios-toggle .track::after{content:'';position:absolute;top:2px;left:2px;width:22px;height:22px;background:#fff;border-radius:50%;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.35);}
+  .ios-toggle.on .track{background:var(--orange);}
+  .ios-toggle.on .track::after{transform:translateX(18px);}
   .lanc-item{display:flex;justify-content:space-between;align-items:flex-start;padding:11px 2px;border-bottom:1px solid var(--line);font-size:13.5px;gap:10px;}
   .lanc-item:last-child{border-bottom:none;}
   .lanc-meta{color:var(--muted);font-size:11.5px;margin-top:2px;}
@@ -212,6 +217,27 @@
     .top-bar{max-width:900px;}
     .card{max-width:900px;}
     .sair-link{max-width:900px;}
+
+    /* Números maiores no desktop — nas telas estreitas do celular eles ficam
+       pequenos de propósito pra caber tabela de 5 colunas em 400px; aqui sobra
+       espaço, então cresce. */
+    .destaque-total{font-size:52px;}
+    .destaque-sub-item .num{font-size:22px;}
+    .r-total{font-size:42px;}
+    .grupo-valor{font-size:19px;}
+    .grupo-nome{font-size:17px;}
+    .sub-linha{font-size:14.5px;}
+    .moeda-total-linha{font-size:12px;}
+    .dre-table{font-size:13px;}
+    .dre-table th{font-size:11px;}
+    .fatura-table{font-size:13px;}
+    .fatura-table th{font-size:11px;}
+    .receita-casa-table{font-size:14.5px;}
+    .lanc-item{font-size:15px;}
+    .lanc-meta{font-size:13px;}
+    .pos-ticker{font-size:16px;}
+    h1{font-size:23px;}
+    .sub{font-size:14.5px;}
   }
 </style>
 </head>
@@ -549,12 +575,36 @@
       <div id="r-grupos-michelle"></div>
       <p class="r-hint">Toque num grupo pra abrir as contas dele</p>
     </div>
+
+    <div class="card" id="card-patrimonio-total">
+      <h1 class="r-title">Patrimônio Total</h1>
+      <div id="r-total-geral" class="r-total"></div>
+      <p class="r-hint">Soma do seu patrimônio com o da Michelle.</p>
+    </div>
   </div>
 
   <div id="view-dre" class="view">
     <div class="card">
       <h1 class="r-title">Análise</h1>
       <p class="sub" style="text-align:center;margin-top:-14px;">DRE — Orçado x Realizado (2026)</p>
+
+      <div class="lf-row">
+        <div class="field">
+          <label>Categoria</label>
+          <select id="dre-categoria" onchange="atualizarGraficosDre()">
+            <option value="">Todos</option>
+            <option value="Matheus">Matheus</option>
+            <option value="Michelle">Michelle</option>
+            <option value="Casa">Casa</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="ios-toggle" id="dre-ordenar-toggle" onclick="toggleDreOrdenacao()">
+        <span class="track"></span>
+        <span>Ordenar por Delta (maior → menor)</span>
+      </div>
+
       <div class="dre-scroll">
         <table class="dre-table">
           <colgroup>
@@ -568,9 +618,9 @@
             <tr>
               <th>Descrição</th>
               <th>Orçado</th>
-              <th>Orçado YTD</th>
+              <th>YTD</th>
               <th>Realizado</th>
-              <th>Δ</th>
+              <th style="color:#7A3B4A;">Δ</th>
             </tr>
           </thead>
           <tbody id="dre-tbody"></tbody>
@@ -614,7 +664,7 @@
         <canvas id="dre-chart-barras"></canvas>
       </div>
 
-      <p class="chart-titulo" style="margin-top:22px;">Delta acumulado (Realizado − Orçado)</p>
+      <p class="chart-titulo" style="margin-top:22px;">Acumulado Orçado x Realizado</p>
       <div style="position:relative;height:210px;margin-top:8px;">
         <canvas id="dre-chart-acumulado"></canvas>
       </div>
@@ -643,9 +693,15 @@
         <tbody id="receita-casa-tbody"></tbody>
       </table>
 
+      <table class="receita-casa-table" style="margin-top:10px;">
+        <tbody id="despesa-casa-tbody"></tbody>
+      </table>
+
       <div style="position:relative;height:210px;margin-top:20px;">
         <canvas id="casa-chart-acumulado"></canvas>
       </div>
+
+      <p class="r-hint" id="casa-despesa-media" style="margin-top:10px;"></p>
 
       <p class="chart-titulo" style="margin-top:26px;">Detalhe por mês</p>
       <div class="dre-scroll">
@@ -750,6 +806,17 @@
           <option value="Matheus">👽 Matheus</option>
           <option value="Michelle">🙍🏻‍♀️ Michelle</option>
         </select>
+      </div>
+
+      <div class="lf-row">
+        <div class="field">
+          <label>Grupo</label>
+          <select id="lf-grupo" onchange="onLfGrupoChange()"></select>
+        </div>
+        <div class="field">
+          <label>Subgrupo</label>
+          <select id="lf-subgrupo" onchange="filtrarLancamentos()"></select>
+        </div>
       </div>
 
       <div class="field">
@@ -1673,7 +1740,7 @@ async function carregarResumo(){
   gruposEl.innerHTML = '';
 
   const { data: contas, error: e1 } = await sb.from('contas').select('id, nome, ordem, grupo_resumo').eq('ativa', true).not('grupo_resumo', 'is', null).neq('titular', 'Michelle').order('ordem');
-  const [cotacoes, posicaoAtivos] = await Promise.all([buscarCotacoes(), calcularPosicaoAtivos()]);
+  const [cotacoes, posicaoAtivos, btgMichelleAberto] = await Promise.all([buscarCotacoes(), calcularPosicaoAtivos(), calcularTotalBtgMichelleAberto()]);
 
   // O Supabase limita cada consulta a 1000 linhas por padrão — com o histórico
   // completo migrado (5800+ lançamentos), é preciso buscar em páginas até
@@ -1735,15 +1802,28 @@ async function carregarResumo(){
     gruposMap['Investimentos'].push({ conta: 'FIIs e Ações', moeda: 'BRL', saldo: posicaoAtivos.patrimonioTotal });
   }
 
+  // BTG+ Michelle: o quanto ela deve nas faturas em aberto do cartão compartilhado
+  // entra como um "a receber" positivo no seu Caixa líquido (o espelho do débito
+  // que aparece negativo no patrimônio dela).
+  if(btgMichelleAberto){
+    if(!gruposMap['Caixa líquido']){ gruposMap['Caixa líquido'] = []; ordemGrupo.unshift('Caixa líquido'); }
+    gruposMap['Caixa líquido'].push({ conta: 'BTG+ Michelle', moeda: 'BRL', saldo: btgMichelleAberto });
+  }
+
   let totalGeral = 0;
   Object.values(gruposMap).forEach(itens => {
     itens.forEach(it => { totalGeral += it.saldo * taxaBRL(it.moeda); });
   });
   totalEl.textContent = fmt(totalGeral);
   totalEl.style.color = 'var(--orange)';
+  totalPatrimonioMatheus = totalGeral;
+  atualizarPatrimonioTotalGeral();
 
   gruposEl.innerHTML = ordemGrupo.map((nomeGrupo, i) => {
-    const itens = gruposMap[nomeGrupo];
+    // Só mostra contas com saldo de verdade — uma conta em CLP zerada, por
+    // exemplo, não precisa aparecer poluindo a lista.
+    const itens = gruposMap[nomeGrupo].filter(it => Math.abs(it.saldo) >= 0.01);
+    if(itens.length === 0) return '';
     const totalGrupoBRL = itens.reduce((s, it) => s + it.saldo * taxaBRL(it.moeda), 0);
     const corGrupo = totalGrupoBRL < 0 ? 'var(--red)' : 'var(--gray1)';
 
@@ -1800,6 +1880,16 @@ function toggleGrupo(i){
   document.getElementById('grupo' + i).classList.toggle('aberto');
 }
 
+let totalPatrimonioMatheus = null;
+let totalPatrimonioMichelle = null;
+function atualizarPatrimonioTotalGeral(){
+  const el = document.getElementById('r-total-geral');
+  if(!el) return;
+  if(totalPatrimonioMatheus == null || totalPatrimonioMichelle == null) return;
+  el.textContent = fmt(totalPatrimonioMatheus + totalPatrimonioMichelle);
+  el.style.color = 'var(--orange)';
+}
+
 // ---------- Patrimônio Michelle (mesma lógica do Resumo, só que filtrado pelas contas dela) ----------
 
 async function carregarPatrimonioMichelle(){
@@ -1826,7 +1916,7 @@ async function carregarPatrimonioMichelle(){
     return;
   }
 
-  const cotacoes = await buscarCotacoes();
+  const [cotacoes, btgMichelleAberto] = await Promise.all([buscarCotacoes(), calcularTotalBtgMichelleAberto()]);
 
   const saldoPorContaMoeda = {};
   contas.forEach(c => { saldoPorContaMoeda[c.id] = {}; });
@@ -1858,12 +1948,21 @@ async function carregarPatrimonioMichelle(){
     }
   });
 
+  // BTG+ Michelle: dívida em aberto no cartão compartilhado entra negativa no
+  // patrimônio dela (o espelho do "a receber" positivo no Caixa líquido do Matheus).
+  if(btgMichelleAberto){
+    if(!gruposMap['Caixa líquido']){ gruposMap['Caixa líquido'] = []; ordemGrupo.unshift('Caixa líquido'); }
+    gruposMap['Caixa líquido'].push({ conta: 'BTG+ Michelle', moeda: 'BRL', saldo: -btgMichelleAberto });
+  }
+
   let totalGeral = 0;
   Object.values(gruposMap).forEach(itens => {
     itens.forEach(it => { totalGeral += it.saldo * taxaBRL(it.moeda); });
   });
   totalEl.textContent = fmt(totalGeral);
   totalEl.style.color = 'var(--orange)';
+  totalPatrimonioMichelle = totalGeral;
+  atualizarPatrimonioTotalGeral();
 
   if(ordemGrupo.length === 0){
     gruposEl.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:12px 0;">Nenhuma conta da Michelle cadastrada ainda.</p>';
@@ -1872,7 +1971,8 @@ async function carregarPatrimonioMichelle(){
   }
 
   gruposEl.innerHTML = ordemGrupo.map((nomeGrupo, i) => {
-    const itens = gruposMap[nomeGrupo];
+    const itens = gruposMap[nomeGrupo].filter(it => Math.abs(it.saldo) >= 0.01);
+    if(itens.length === 0) return '';
     const totalGrupoBRL = itens.reduce((s, it) => s + it.saldo * taxaBRL(it.moeda), 0);
     const corGrupo = totalGrupoBRL < 0 ? 'var(--red)' : 'var(--gray1)';
 
@@ -1937,9 +2037,15 @@ function fmtDre(v){
   return neg ? '(' + abs + ')' : abs;
 }
 
+function setaDelta(delta){
+  const cor = corDelta(delta);
+  const glifo = delta >= 0 ? '▲' : '▼';
+  return `<span style="color:${cor};font-size:10px;margin-right:4px;">${glifo}</span>`;
+}
+
 function celulasDre(r){
   const delta = r.realizado - r.orcado_ytd;
-  return `<td>${fmtDre(r.orcado)}</td><td>${fmtDre(r.orcado_ytd)}</td><td>${fmtDre(r.realizado)}</td><td style="color:${corDelta(delta)};">${fmtDre(delta)}</td>`;
+  return `<td>${fmtDre(r.orcado)}</td><td>${fmtDre(r.orcado_ytd)}</td><td>${fmtDre(r.realizado)}</td><td style="color:var(--text);white-space:nowrap;">${setaDelta(delta)}${fmtDre(delta)}</td>`;
 }
 
 async function carregarDRE(){
@@ -1960,33 +2066,50 @@ async function carregarDRE(){
     document.getElementById('dre-res-realizado').textContent = fmtDre(resultado.realizado);
     const deltaRes = resultado.realizado - resultado.orcado_ytd;
     const deltaEl = document.getElementById('dre-res-delta');
-    deltaEl.textContent = fmtDre(deltaRes);
-    deltaEl.style.color = corDelta(deltaRes);
+    deltaEl.innerHTML = setaDelta(deltaRes) + fmtDre(deltaRes);
+    deltaEl.style.color = 'var(--text)';
   }
 
-  const l1s = data.filter(r => r.nivel === 1);
-  const l2s = data.filter(r => r.nivel === 2);
-  const l3s = data.filter(r => r.nivel === 3);
-  dreL1s = l1s;
-  dreL2s = l2s;
-  dreL3s = l3s;
+  dreL1s = data.filter(r => r.nivel === 1);
+  dreL2s = data.filter(r => r.nivel === 2);
+  dreL3s = data.filter(r => r.nivel === 3);
+
+  renderizarTabelaDre();
+  dreCarregado = true;
+
+  popularFiltrosDreChart();
+}
+
+let dreOrdenarPorDelta = false;
+
+function toggleDreOrdenacao(){
+  dreOrdenarPorDelta = !dreOrdenarPorDelta;
+  document.getElementById('dre-ordenar-toggle').classList.toggle('on', dreOrdenarPorDelta);
+  renderizarTabelaDre();
+}
+
+function renderizarTabelaDre(){
+  const tbody = document.getElementById('dre-tbody');
   const nomeL1 = { entrada: 'Receitas', saida: 'Despesas' };
 
   let html = '';
-  l1s.forEach((r1, i) => {
+  dreL1s.forEach((r1, i) => {
     html += `<tr class="dre-row-l1" id="dre-tr-l1-${i}" onclick="toggleDreL1(${i})">
       <td>${nomeL1[r1.fluxo] || r1.descricao}</td>
       ${celulasDre(r1)}
     </tr>`;
 
-    const filhos2 = l2s.filter(r => r.codigo_pai === r1.codigo);
+    let filhos2 = dreL2s.filter(r => r.codigo_pai === r1.codigo);
+    if(dreOrdenarPorDelta){
+      filhos2 = [...filhos2].sort((a, b) => (b.realizado - b.orcado_ytd) - (a.realizado - a.orcado_ytd));
+    }
     filhos2.forEach((r2, j) => {
       html += `<tr class="dre-row-l2 dre-hide dre-l2-de-${i}" id="dre-tr-l2-${i}-${j}" onclick="toggleDreL2(${i}, ${j})">
         <td>${r2.descricao}</td>
         ${celulasDre(r2)}
       </tr>`;
 
-      const filhos3 = l3s.filter(r => r.codigo_pai === r2.codigo);
+      const filhos3 = dreL3s.filter(r => r.codigo_pai === r2.codigo);
       filhos3.forEach(r3 => {
         html += `<tr class="dre-row-l3 dre-hide dre-l3-de-${i}-${j}">
           <td>${r3.descricao}</td>
@@ -1997,9 +2120,6 @@ async function carregarDRE(){
   });
 
   tbody.innerHTML = html;
-  dreCarregado = true;
-
-  popularFiltrosDreChart();
 }
 
 function toggleDreL1(i){
@@ -2048,23 +2168,26 @@ function onDreChartGrupoChange(){
 async function garantirLancamentos2026(){
   if(dreLancamentos2026) return dreLancamentos2026;
   const { data, error } = await sb.from('lancamentos')
-    .select('valor, fluxo, data_hora, categorias(nome, grupo)')
+    .select('valor, fluxo, data_hora, dono, categorias(nome, grupo)')
     .gte('data_hora', '2026-01-01T00:00:00')
     .lt('data_hora', '2027-01-01T00:00:00');
   dreLancamentos2026 = error ? [] : data;
   return dreLancamentos2026;
 }
 
-function realizadoMensal(lancamentos, fluxo, grupoDescricao, subgrupoDescricao){
+function realizadoMensal(lancamentos, fluxo, grupoDescricao, subgrupoDescricao, categoria){
   const meses = Array(12).fill(0);
   lancamentos.forEach(l => {
     if(l.fluxo !== fluxo) return;
+    if(categoria && l.dono !== categoria) return;
     const cat = l.categorias;
     if(!cat || cat.grupo !== grupoDescricao) return;
     if(subgrupoDescricao && cat.nome !== subgrupoDescricao) return;
     const mes = new Date(l.data_hora).getMonth();
     meses[mes] += Number(l.valor);
   });
+  // Despesa: valores sempre negativos no gráfico, orçado e realizado do mesmo
+  // lado do zero (senão as barras ficam em lados opostos e fica confuso comparar).
   return fluxo === 'saida' ? meses.map(v => -v) : meses;
 }
 
@@ -2078,14 +2201,17 @@ async function atualizarGraficosDre(){
   const sub = subCodigo ? dreL3s.find(s => s.codigo === subCodigo) : null;
   if(!grupo){ return; }
 
+  const categoria = document.getElementById('dre-categoria') ? document.getElementById('dre-categoria').value : '';
+
   const orcadoAnual = sub ? sub.orcado : grupo.orcado;
   const orcadoMensal = orcadoAnual / 12;
-  const orcadoMeses = Array(12).fill(orcadoMensal);
+  // Despesa: orçado também vai negativo, pro lado bater com o realizado no gráfico.
+  const orcadoMeses = Array(12).fill(fluxo === 'saida' ? -orcadoMensal : orcadoMensal);
 
   const lancamentos = await garantirLancamentos2026();
   const grupoDescricao = grupo.descricao;
   const subDescricao = sub ? sub.descricao : null;
-  const realizadoMeses = realizadoMensal(lancamentos, fluxo, grupoDescricao, subDescricao);
+  const realizadoMeses = realizadoMensal(lancamentos, fluxo, grupoDescricao, subDescricao, categoria);
 
   const labels = NOMES_MES_CURTO;
 
@@ -2128,24 +2254,24 @@ async function atualizarGraficosDre(){
     });
   }
 
-  // Delta acumulado: só até o mês atual (meses futuros não têm realizado ainda)
+  // Acumulado: orçado (área cinza) x realizado (linha laranja) — só até o mês
+  // atual, já que meses futuros ainda não têm realizado.
   const hoje = new Date();
   const mesAtual = (hoje.getFullYear() === 2026) ? hoje.getMonth() : 11;
   const labelsAcum = labels.slice(0, mesAtual + 1);
-  let acumulado = 0;
-  const deltaAcumulado = [];
+  let accOrcado = 0, accRealizado = 0;
+  const orcadoAcumulado = [], realizadoAcumulado = [];
   for(let i = 0; i <= mesAtual; i++){
-    acumulado += (realizadoMeses[i] - orcadoMeses[i]);
-    deltaAcumulado.push(acumulado);
+    accOrcado += orcadoMeses[i];
+    accRealizado += realizadoMeses[i];
+    orcadoAcumulado.push(accOrcado);
+    realizadoAcumulado.push(accRealizado);
   }
-
-  const corDeltaLinha = deltaAcumulado[deltaAcumulado.length - 1] >= 0 ? '#5CA86B' : '#C5473F';
 
   if(dreChartAcumulado){
     dreChartAcumulado.data.labels = labelsAcum;
-    dreChartAcumulado.data.datasets[0].data = deltaAcumulado;
-    dreChartAcumulado.data.datasets[0].borderColor = corDeltaLinha;
-    dreChartAcumulado.data.datasets[0].backgroundColor = corDeltaLinha + '33';
+    dreChartAcumulado.data.datasets[0].data = orcadoAcumulado;
+    dreChartAcumulado.data.datasets[1].data = realizadoAcumulado;
     dreChartAcumulado.update();
   } else {
     const ctxA = document.getElementById('dre-chart-acumulado').getContext('2d');
@@ -2153,16 +2279,28 @@ async function atualizarGraficosDre(){
       type: 'line',
       data: {
         labels: labelsAcum,
-        datasets: [{
-          label: 'Delta acumulado',
-          data: deltaAcumulado,
-          borderColor: corDeltaLinha,
-          backgroundColor: corDeltaLinha + '33',
-          fill: true,
-          tension: 0.25,
-          pointRadius: 3,
-          pointBackgroundColor: corDeltaLinha
-        }]
+        datasets: [
+          {
+            label: 'Orçado',
+            data: orcadoAcumulado,
+            borderColor: corOrcado,
+            backgroundColor: corOrcado + '33',
+            fill: true,
+            tension: 0.25,
+            pointRadius: 2,
+            pointBackgroundColor: corOrcado
+          },
+          {
+            label: 'Realizado',
+            data: realizadoAcumulado,
+            borderColor: corRealizado,
+            backgroundColor: 'transparent',
+            fill: false,
+            tension: 0.25,
+            pointRadius: 3,
+            pointBackgroundColor: corRealizado
+          }
+        ]
       },
       options: {
         responsive: true,
@@ -2172,7 +2310,7 @@ async function atualizarGraficosDre(){
           y: { ticks: { color: '#9A9AA0', font: { size: 9 }, callback: v => fmtDre(v) }, grid: { color: '#2A2A2E' } }
         },
         plugins: {
-          legend: { display: false },
+          legend: { labels: { color: '#F2F0EC', font: { size: 10.5 } } },
           datalabels: { display: false }
         }
       }
@@ -2358,7 +2496,7 @@ async function carregarCasa(){
     const rateadoMatheus = m.despesaCasa * pctMatheus;
     const delta = rateadoMatheus - m.realMatheus;
     acumulado += delta;
-    return { chave, despesaCasa: m.despesaCasa, rateadoMatheus, realMatheus: m.realMatheus, delta, acumulado, rendaMatheus: m.rendaMatheus, rendaMichelle, pctMatheus };
+    return { chave, despesaCasa: m.despesaCasa, rateadoMatheus, realMatheus: m.realMatheus, realMichelle: m.realMichelle, delta, acumulado, rendaMatheus: m.rendaMatheus, rendaMichelle, pctMatheus };
   });
 
   casaMeses = linhas;
@@ -2375,14 +2513,24 @@ async function carregarCasa(){
       <td>${labelMesCasa(l.chave)}</td>
       <td>${fmtDre(l.despesaCasa)}</td>
       <td style="color:${corDelta(l.acumulado)};font-weight:700;">${fmtDre(l.acumulado)}</td>
-      <td>${pessoaDevendo(l.acumulado)}</td>
+      <td style="color:${corDelta(l.acumulado)};font-weight:600;">${pessoaDevendo(l.acumulado)}</td>
     </tr>
   `).join('');
+
+  // Despesa Casa média dos últimos 12 meses (ou de todos, se ainda não tiver 12).
+  const mediaEl = document.getElementById('casa-despesa-media');
+  if(mediaEl){
+    const ultimos12 = linhas.slice(-12);
+    const mediaDespesa = ultimos12.length ? ultimos12.reduce((s, l) => s + l.despesaCasa, 0) / ultimos12.length : 0;
+    mediaEl.textContent = 'Despesa Casa média (últimos ' + ultimos12.length + ' meses): R$ ' + fmtDre(mediaDespesa);
+  }
 
   if(typeof Chart === 'undefined') { casaCarregado = true; return; }
 
   const labels = linhas.map(l => labelMesCasa(l.chave));
-  const dataAcumulado = linhas.map(l => l.acumulado);
+  const fmtMil = v => (v / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  // Eixo em milhares (3.576 vira "3,6k") pra caber mais fácil no espaço do gráfico.
+  const dataAcumulado = linhas.map(l => l.acumulado / 1000);
   const saldoAtual = linhas.length ? linhas[linhas.length - 1].acumulado : 0;
   const corLinha = saldoAtual >= 0 ? '#5CA86B' : '#C5473F';
 
@@ -2414,13 +2562,20 @@ async function carregarCasa(){
         maintainAspectRatio: false,
         scales: {
           x: { ticks: { color: '#9A9AA0', font: { size: 10 } }, grid: { display: false } },
-          y: { ticks: { color: '#9A9AA0', font: { size: 9 }, callback: v => fmtDre(v) }, grid: { color: '#2A2A2E' } }
+          y: { ticks: { color: '#9A9AA0', font: { size: 9 }, callback: v => fmtMil(v) + 'k' }, grid: { color: '#2A2A2E' } }
         },
         plugins: {
           legend: { display: false },
-          datalabels: { display: false }
+          datalabels: {
+            color: '#F2F0EC',
+            anchor: 'end',
+            align: 'top',
+            font: { size: 9, weight: '600' },
+            formatter: v => fmtMil(v)
+          }
         }
-      }
+      },
+      plugins: (typeof ChartDataLabels !== 'undefined') ? [ChartDataLabels] : []
     });
   }
 
@@ -2472,6 +2627,9 @@ function renderReceitaCasa(){
   }
 
   function linhaHtml(label, valor, cor){
+    // Só mostra a linha se tiver valor de verdade — zero fica de fora e a
+    // tabela se reorganiza sozinha (os cabeçalhos/totais continuam sempre).
+    if(Math.abs(valor) < 0.01) return '';
     const corTxt = cor ? `color:${cor};` : '';
     return `<tr><td style="padding-left:14px;${corTxt}">${label}</td><td style="text-align:right;${corTxt}">${fmtDre(valor)}</td><td></td></tr>`;
   }
@@ -2503,6 +2661,17 @@ function renderReceitaCasa(){
   html += `<tr class="receita-casa-footer"><td>Receita Casa</td><td style="text-align:right;">${fmtDre(totalGeral)}</td><td></td></tr>`;
 
   tbody.innerHTML = html;
+
+  const despesaTbody = document.getElementById('despesa-casa-tbody');
+  if(despesaTbody){
+    const despesaCasa = linha ? linha.despesaCasa : 0;
+    const despesaMatheus = linha ? linha.realMatheus : 0;
+    const despesaMichelle = linha ? linha.realMichelle : 0;
+    let htmlDespesa = `<tr class="receita-casa-footer"><td>Despesa Casa</td><td style="text-align:right;">${fmtDre(despesaCasa)}</td><td></td></tr>`;
+    htmlDespesa += linhaHtml('Despesa Matheus', despesaMatheus);
+    htmlDespesa += linhaHtml('Despesa Michelle', despesaMichelle);
+    despesaTbody.innerHTML = htmlDespesa;
+  }
 }
 
 // ---------- Fatura BTG (ciclo dia 11-10, Michelle x Casa x Matheus) ----------
@@ -2516,6 +2685,23 @@ function cicloBtg(dataStr){
     if(mes > 12){ mes = 1; ano++; }
   }
   return ano + '-' + String(mes).padStart(2, '0');
+}
+
+// Total que a Michelle deve no BTG+ nos ciclos ainda em aberto (mesma regra da
+// aba Fatura BTG) — usado no Resumo (Caixa líquido, positivo pro Matheus) e no
+// Patrimônio Michelle (negativo, é uma dívida dela).
+async function calcularTotalBtgMichelleAberto(){
+  const { data, error } = await sb.from('lancamentos')
+    .select('valor, data_hora')
+    .eq('conta_id', BTG_CONTA_ID)
+    .eq('fluxo', 'saida')
+    .eq('dono', 'Michelle');
+  if(error || !data) return 0;
+  const inicio = inicioFaturaBtgAtual();
+  return data.reduce((s, l) => {
+    const ciclo = cicloBtg(l.data_hora);
+    return ciclo >= inicio ? s + Number(l.valor) : s;
+  }, 0);
 }
 
 function labelFaturaBtg(chave){
@@ -2631,7 +2817,42 @@ async function carregarFaturaBtg(){
 
 // ---------- Lançamentos (consulta e filtro) ----------
 
+let lfGruposCache = null;
+
+// Grupo/Subgrupo pro filtro do Histórico — carrega uma vez a lista completa de
+// categorias (nome + grupo) direto da tabela, independente do que já veio nos
+// lançamentos carregados, pra sempre oferecer todas as opções existentes.
+async function garantirLfGrupos(){
+  if(lfGruposCache) return lfGruposCache;
+  const { data, error } = await sb.from('categorias').select('nome, grupo').eq('ativa', true);
+  lfGruposCache = error ? [] : (data || []);
+  return lfGruposCache;
+}
+
+async function popularFiltroLfGrupo(){
+  const cats = await garantirLfGrupos();
+  const grupos = Array.from(new Set(cats.map(c => c.grupo).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  const sel = document.getElementById('lf-grupo');
+  if(!sel) return;
+  const atual = sel.value;
+  sel.innerHTML = '<option value="">Todos</option>' + grupos.map(g => `<option value="${g}">${g}</option>`).join('');
+  sel.value = grupos.includes(atual) ? atual : '';
+  onLfGrupoChange();
+}
+
+async function onLfGrupoChange(){
+  const grupo = document.getElementById('lf-grupo').value;
+  const cats = await garantirLfGrupos();
+  const subSel = document.getElementById('lf-subgrupo');
+  const subs = grupo
+    ? Array.from(new Set(cats.filter(c => c.grupo === grupo).map(c => c.nome).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR'))
+    : [];
+  subSel.innerHTML = '<option value="">Todos</option>' + subs.map(s => `<option value="${s}">${s}</option>`).join('');
+  filtrarLancamentos();
+}
+
 async function carregarLancamentos(){
+  popularFiltroLfGrupo();
   const de = document.getElementById('lf-data-de').value;
   const ate = document.getElementById('lf-data-ate').value;
   const contaId = document.getElementById('lf-conta').value;
@@ -2678,7 +2899,17 @@ function setLfStatus(status){
 
 function filtrarLancamentos(){
   const termo = document.getElementById('lf-texto').value.trim().toLowerCase();
+  const grupoSel = document.getElementById('lf-grupo');
+  const subgrupoSel = document.getElementById('lf-subgrupo');
+  const grupoFiltro = grupoSel ? grupoSel.value : '';
+  const subgrupoFiltro = subgrupoSel ? subgrupoSel.value : '';
   let lista = lancamentosTodos;
+  if(grupoFiltro){
+    lista = lista.filter(l => l.categorias && l.categorias.grupo === grupoFiltro);
+  }
+  if(subgrupoFiltro){
+    lista = lista.filter(l => l.categorias && l.categorias.nome === subgrupoFiltro);
+  }
   if(termo){
     lista = lista.filter(l => {
       const obs = (l.observacao || '').toLowerCase();
@@ -3714,7 +3945,9 @@ function aplicarRestricaoPerfil(){
 
     const cardDela = document.getElementById('card-patrimonio-michelle');
     const cardDele = document.getElementById('card-patrimonio-matheus');
+    const cardTotal = document.getElementById('card-patrimonio-total');
     if(cardDele) cardDele.style.display = 'none';
+    if(cardTotal) cardTotal.style.display = 'none';
     if(cardDela){
       const titulo = document.getElementById('titulo-patrimonio-michelle');
       if(titulo) titulo.textContent = 'Patrimônio';
