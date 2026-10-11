@@ -401,6 +401,7 @@
           <option value="Compra">Compra</option>
           <option value="Venda">Venda</option>
           <option value="Rendimento">Rendimento</option>
+          <option value="Rendimento em Conta">Rendimento em Conta</option>
           <option value="Taxa">Taxa</option>
           <option value="Multa">Multa</option>
         </select>
@@ -697,11 +698,14 @@
       </div>
 
       <p class="chart-titulo" style="margin-top:22px;">Receita Casa</p>
-      <table class="receita-casa-table">
+      <table class="receita-casa-table" style="table-layout:fixed;">
+        <colgroup><col style="width:34%;"><col style="width:22%;"><col style="width:22%;"><col style="width:22%;"></colgroup>
         <tbody id="receita-casa-tbody"></tbody>
       </table>
 
-      <table class="receita-casa-table" style="margin-top:10px;">
+      <p class="chart-titulo" style="margin-top:22px;">Despesa Casa</p>
+      <table class="receita-casa-table" style="table-layout:fixed;">
+        <colgroup><col style="width:34%;"><col style="width:22%;"><col style="width:22%;"><col style="width:22%;"></colgroup>
         <tbody id="despesa-casa-tbody"></tbody>
       </table>
 
@@ -709,7 +713,9 @@
         <canvas id="casa-chart-acumulado"></canvas>
       </div>
 
-      <p class="r-hint" id="casa-despesa-media" style="margin-top:10px;"></p>
+      <div class="destaque-sub" style="margin-top:26px;">
+        <div class="destaque-sub-item"><span class="num" id="casa-despesa-media">–</span><span class="lbl" id="casa-despesa-media-lbl">Despesa Casa média · últimos 12 meses</span></div>
+      </div>
 
       <p class="chart-titulo" style="margin-top:26px;">Detalhe por mês</p>
       <div class="dre-scroll">
@@ -1049,6 +1055,7 @@
           <option value="Compra">Compra</option>
           <option value="Venda">Venda</option>
           <option value="Rendimento">Rendimento</option>
+          <option value="Rendimento em Conta">Rendimento em Conta</option>
           <option value="Taxa">Taxa</option>
           <option value="Multa">Multa</option>
         </select>
@@ -1130,6 +1137,7 @@
           <option value="Compra">Compra</option>
           <option value="Venda">Venda</option>
           <option value="Rendimento">Rendimento</option>
+          <option value="Rendimento em Conta">Rendimento em Conta</option>
           <option value="Taxa">Taxa</option>
           <option value="Multa">Multa</option>
         </select>
@@ -1808,6 +1816,12 @@ async function carregarResumo(){
   // ficam juntos numa linha só, sem separar os dois).
   if(!posicaoAtivos.erro && gruposMap['Investimentos']){
     gruposMap['Investimentos'].push({ conta: 'FIIs e Ações', moeda: 'BRL', saldo: posicaoAtivos.patrimonioTotal });
+    // Saldo Investimento: caixa dentro da carteira (aportes ainda não aplicados em
+    // ativo + rendimentos). Sem ele o patrimônio de Investimentos fica subestimado.
+    const saldoInvest = await calcularSaldoInvestimento();
+    if(Math.abs(saldoInvest) >= 0.01){
+      gruposMap['Investimentos'].push({ conta: 'Saldo Investimento', moeda: 'BRL', saldo: saldoInvest });
+    }
   }
 
   // BTG+ Michelle: o quanto ela deve nas faturas em aberto do cartão compartilhado
@@ -2548,7 +2562,9 @@ async function carregarCasa(){
   if(mediaEl){
     const ultimos12 = linhas.slice(-12);
     const mediaDespesa = ultimos12.length ? ultimos12.reduce((s, l) => s + l.despesaCasa, 0) / ultimos12.length : 0;
-    mediaEl.textContent = 'Despesa Casa média (últimos ' + ultimos12.length + ' meses): R$ ' + fmtDre(mediaDespesa);
+    mediaEl.textContent = 'R$ ' + fmtDre(mediaDespesa);
+    const lblEl = document.getElementById('casa-despesa-media-lbl');
+    if(lblEl) lblEl.textContent = 'Despesa Casa média · últimos ' + ultimos12.length + ' meses';
   }
 
   if(typeof Chart === 'undefined') { casaCarregado = true; return; }
@@ -2659,7 +2675,7 @@ function renderReceitaCasa(){
     // tabela se reorganiza sozinha (os cabeçalhos/totais continuam sempre).
     if(Math.abs(valor) < 0.01) return '';
     const corTxt = cor ? `color:${cor};` : '';
-    return `<tr><td style="padding-left:14px;${corTxt}">${label}</td><td style="text-align:right;${corTxt}">${fmtDre(valor)}</td><td></td></tr>`;
+    return `<tr><td style="padding-left:14px;${corTxt}">${label}</td><td style="text-align:right;${corTxt}">${fmtDre(valor)}</td><td></td><td></td></tr>`;
   }
 
   const fmtPct = v => (v * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%';
@@ -2672,12 +2688,12 @@ function renderReceitaCasa(){
   const pctMatheus = totalGeral > 0 ? (totalMatheus / totalGeral) : 0;
   const pctMichelle = totalGeral > 0 ? (totalMichelle / totalGeral) : 0;
 
-  let html = `<tr class="receita-casa-header"><td>Matheus</td><td style="text-align:right;">${fmtDre(totalMatheus)}</td><td style="text-align:right;">${fmtPct(pctMatheus)}</td></tr>`;
+  let html = `<tr class="receita-casa-header"><td>Matheus</td><td style="text-align:right;">${fmtDre(totalMatheus)}</td><td style="text-align:right;">${fmtPct(pctMatheus)}</td><td></td></tr>`;
   CASA_RECEITA_MATHEUS.forEach(nome => {
     html += linhaHtml(nome, det.matheus[nome] || 0);
   });
 
-  html += `<tr class="receita-casa-header"><td>Michelle</td><td style="text-align:right;">${fmtDre(totalMichelle)}</td><td style="text-align:right;">${fmtPct(pctMichelle)}</td></tr>`;
+  html += `<tr class="receita-casa-header"><td>Michelle</td><td style="text-align:right;">${fmtDre(totalMichelle)}</td><td style="text-align:right;">${fmtPct(pctMichelle)}</td><td></td></tr>`;
   html += linhaHtml('Consulta', det.michelleReceita['Consulta'] || 0);
   CASA_REDUTORES_MICHELLE.forEach(nome => {
     html += linhaHtml('(-) ' + nome, -(det.michelleReducao[nome] || 0), 'var(--red)');
@@ -2686,18 +2702,32 @@ function renderReceitaCasa(){
     html += linhaHtml(nome, det.michelleReceita[nome] || 0);
   });
 
-  html += `<tr class="receita-casa-footer"><td>Receita Casa</td><td style="text-align:right;">${fmtDre(totalGeral)}</td><td></td></tr>`;
+  html += `<tr class="receita-casa-footer"><td>Receita Casa</td><td style="text-align:right;">${fmtDre(totalGeral)}</td><td></td><td></td></tr>`;
 
   tbody.innerHTML = html;
 
   const despesaTbody = document.getElementById('despesa-casa-tbody');
   if(despesaTbody){
+    // 3 colunas: Rateada (quanto cada um deveria pagar, pelo % de renda do mês
+    // usado no Acerto de Contas), Real (efetivamente pago) e Delta (Real − Rateada).
     const despesaCasa = linha ? linha.despesaCasa : 0;
-    const despesaMatheus = linha ? linha.realMatheus : 0;
-    const despesaMichelle = linha ? linha.realMichelle : 0;
-    let htmlDespesa = `<tr class="receita-casa-footer"><td>Despesa Casa</td><td style="text-align:right;">${fmtDre(despesaCasa)}</td><td></td></tr>`;
-    htmlDespesa += linhaHtml('Despesa Matheus', despesaMatheus);
-    htmlDespesa += linhaHtml('Despesa Michelle', despesaMichelle);
+    const realMatheus = linha ? linha.realMatheus : 0;
+    const realMichelle = linha ? linha.realMichelle : 0;
+    const pctM = linha ? linha.pctMatheus : 0.5;
+    const rateadaMatheus = despesaCasa * pctM;
+    const rateadaMichelle = despesaCasa - rateadaMatheus;
+
+    const celDelta = d => `<td style="text-align:right;color:${corDelta(d)};">${Math.abs(d) < 0.01 ? '–' : fmtDre(d)}</td>`;
+    const linhaDesp = (label, rateada, real, total) => {
+      const cls = total ? ' class="receita-casa-footer"' : '';
+      const pad = total ? '' : 'padding-left:14px;';
+      return `<tr${cls}><td style="${pad}">${label}</td><td style="text-align:right;">${fmtDre(rateada)}</td><td style="text-align:right;">${fmtDre(real)}</td>${celDelta(real - rateada)}</tr>`;
+    };
+
+    let htmlDespesa = `<tr class="receita-casa-header"><td></td><td style="text-align:right;">Rateada</td><td style="text-align:right;">Real</td><td style="text-align:right;">Delta</td></tr>`;
+    htmlDespesa += linhaDesp('Despesa Casa', despesaCasa, realMatheus + realMichelle, true);
+    if(Math.abs(rateadaMatheus) >= 0.01 || Math.abs(realMatheus) >= 0.01) htmlDespesa += linhaDesp('Despesa Matheus', rateadaMatheus, realMatheus, false);
+    if(Math.abs(rateadaMichelle) >= 0.01 || Math.abs(realMichelle) >= 0.01) htmlDespesa += linhaDesp('Despesa Michelle', rateadaMichelle, realMichelle, false);
     despesaTbody.innerHTML = htmlDespesa;
   }
 }
@@ -2719,12 +2749,9 @@ function cicloBtg(dataStr){
 // aba Fatura BTG) — usado no Resumo (Caixa líquido, positivo pro Matheus) e no
 // Patrimônio Michelle (negativo, é uma dívida dela).
 async function calcularTotalBtgMichelleAberto(){
-  const { data, error } = await sb.from('lancamentos')
-    .select('valor, data_hora')
-    .eq('conta_id', BTG_CONTA_ID)
-    .eq('fluxo', 'saida')
-    .eq('dono', 'Michelle');
-  if(error || !data) return 0;
+  const { data: dadosBtg, error } = await sb.rpc('btg_fatura_dados');
+  if(error || !dadosBtg) return 0;
+  const data = (dadosBtg.saidas || []).filter(l => l.dono === 'Michelle');
   const inicio = inicioFaturaBtgAtual();
   return data.reduce((s, l) => {
     const ciclo = cicloBtg(l.data_hora);
@@ -2752,35 +2779,20 @@ async function carregarFaturaBtg(){
   const tbody = document.getElementById('fatura-btg-tbody');
   tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Carregando...</td></tr>';
 
-  let lancamentos = [];
-  let erro = null;
-  const PAGE = 1000;
-  for(let from = 0; ; from += PAGE){
-    const { data: pagina, error: erroPagina } = await sb.from('lancamentos')
-      .select('valor, data_hora, dono')
-      .eq('conta_id', BTG_CONTA_ID)
-      .eq('fluxo', 'saida')
-      .order('data_hora', { ascending: true })
-      .range(from, from + PAGE - 1);
-    if(erroPagina){ erro = erroPagina; break; }
-    lancamentos = lancamentos.concat(pagina);
-    if(pagina.length < PAGE) break;
-  }
-
-  if(erro){
-    tbody.innerHTML = '<tr><td colspan="5" style="color:var(--red);">Erro: ' + erro.message + '</td></tr>';
+  // Dados via função do banco (security definer): a Michelle não é titular da
+  // conta BTG+, mas precisa enxergar a fatura completa do cartão compartilhado.
+  const { data: dadosBtg, error: erro } = await sb.rpc('btg_fatura_dados');
+  if(erro || !dadosBtg){
+    tbody.innerHTML = '<tr><td colspan="5" style="color:var(--red);">Erro: ' + (erro ? erro.message : 'sem permissão') + '</td></tr>';
     return;
   }
+  const lancamentos = dadosBtg.saidas || [];
 
   // Saldo anterior = tudo que já estava pendente no BTG+ antes do início desta
   // aba (faturas antigas não 100% quitadas) — necessário pro Total bater com o
   // saldo real da conta (entrada total - saida total). NÃO REMOVER esta conta:
   // sem ela o Total fica sempre menor que o saldo real da conta BTG+.
-  const { data: entradasData } = await sb.from('lancamentos')
-    .select('valor')
-    .eq('conta_id', BTG_CONTA_ID)
-    .eq('fluxo', 'entrada');
-  const totalEntradaGeral = (entradasData || []).reduce((s, l) => s + Number(l.valor), 0);
+  const totalEntradaGeral = Number(dadosBtg.entrada_total || 0);
   const totalSaidaGeral = lancamentos.reduce((s, l) => s + Number(l.valor), 0);
 
   const inicioFaturaBtg = inicioFaturaBtgAtual();
@@ -3957,7 +3969,7 @@ function aplicarRestricaoPerfil(){
   document.querySelectorAll('.menu-nav .menu-section').forEach(sec => { sec.style.display = ''; });
 
   if(restrito){
-    const idsPermitidos = ['menu-btn-resumo', 'menu-btn-lancar', 'menu-btn-lancamentos', 'menu-btn-treinos', 'menu-btn-historico-treinos', 'menu-btn-analise'];
+    const idsPermitidos = ['menu-btn-resumo', 'menu-btn-lancar', 'menu-btn-lancamentos', 'menu-btn-treinos', 'menu-btn-historico-treinos', 'menu-btn-analise', 'menu-btn-fatura-btg'];
     document.querySelectorAll('.menu-nav button').forEach(btn => {
       if(!idsPermitidos.includes(btn.id)) btn.style.display = 'none';
     });
@@ -4239,7 +4251,7 @@ async function calcularSaldoInvestimento(){
   (ativosResp.data || []).forEach(a => {
     const v = centavos(a.valor);
     if(a.tipo === 'Compra') comprasCent += v;
-    else if(a.tipo === 'Rendimento') rendimentosCent += v;
+    else if(a.tipo === 'Rendimento' || a.tipo === 'Rendimento em Conta') rendimentosCent += v;
     else if(a.tipo === 'Venda') vendasCent += v;
     else if(a.tipo === 'Taxa') taxasCent += v;
     else if(a.tipo === 'Multa') multasCent += v;
@@ -4307,7 +4319,8 @@ async function carregarPosicao(){
       </div>`;
   }
 
-  totalEl.textContent = fmtR$(patrimonioTotal);
+  // Patrimônio = valor de mercado de FIIs/Ações + Saldo Investimento (caixa na carteira).
+  totalEl.textContent = fmtR$(patrimonioTotal + saldoInvestimento);
 
   const gruposHtml = renderGrupo('fiis', 'FIIs', fiis, totalFiis) + renderGrupo('acoes', 'Ações', acoes, totalAcoes);
   listaEl.innerHTML = gruposHtml || '<p style="color:var(--muted);font-size:13px;text-align:center;padding:20px 0;">Nenhum ativo lançado ainda.</p>';
@@ -4373,8 +4386,9 @@ function renderHistorico(lista){
   listaEl.innerHTML = lista.map(a => {
     const d = new Date(a.data_hora);
     const dataFmt = pad(d.getDate())+'/'+pad(d.getMonth()+1)+'/'+d.getFullYear();
-    const sinal = (a.tipo === 'Venda' || a.tipo === 'Rendimento') ? '+' : '-';
-    const cor = (a.tipo === 'Venda' || a.tipo === 'Rendimento') ? 'var(--green)' : 'var(--red)';
+    const entrada = (a.tipo === 'Venda' || a.tipo === 'Rendimento' || a.tipo === 'Rendimento em Conta');
+    const sinal = entrada ? '+' : '-';
+    const cor = entrada ? 'var(--green)' : 'var(--red)';
     const qtdTxt = a.quantidade ? ' · #' + a.quantidade : '';
     const linha1 = a.ticker ? (a.tipo + ' · ' + a.ticker) : a.tipo;
     return `
