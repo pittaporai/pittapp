@@ -2545,15 +2545,17 @@ async function carregarCasa(){
 
   function pessoaDevendo(valor){
     if(Math.abs(valor) < 1) return '—';
-    return valor > 0 ? 'Michelle' : 'Matheus';
+    // Convenção fixa: delta = rateado − real do Matheus. Quando o Matheus paga a
+    // mais que o rateio, o saldo fica NEGATIVO e é a Michelle que deve (e vice-versa).
+    return valor > 0 ? 'Matheus' : 'Michelle';
   }
 
   tbody.innerHTML = linhas.map(l => `
     <tr>
       <td>${labelMesCasa(l.chave)}</td>
       <td>${fmtDre(l.despesaCasa)}</td>
-      <td style="color:${corDelta(l.acumulado)};font-weight:700;">${fmtDre(l.acumulado)}</td>
-      <td style="color:${corDelta(l.acumulado)};font-weight:600;">${pessoaDevendo(l.acumulado)}</td>
+      <td style="color:${corPessoaCasa(l.acumulado)};font-weight:700;">${fmtDre(l.acumulado)}</td>
+      <td style="color:${corPessoaCasa(l.acumulado)};font-weight:600;">${pessoaDevendo(l.acumulado)}</td>
     </tr>
   `).join('');
 
@@ -2575,14 +2577,32 @@ async function carregarCasa(){
   const fmtMil = v => v.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
   // Eixo em milhares (3.576 vira "3,6k") pra caber mais fácil no espaço do gráfico.
   const dataAcumulado = linhas.map(l => l.acumulado / 1000);
-  const saldoAtual = linhas.length ? linhas[linhas.length - 1].acumulado : 0;
-  const corLinha = saldoAtual >= 0 ? '#5CA86B' : '#C5473F';
+  // Acima de zero = Matheus deve pagar a mais; abaixo de zero = Michelle deve.
+  // A linha e a área mudam de cor conforme o lado, e dois indicadores no fim do
+  // gráfico (Matheus em cima, Michelle embaixo) mostram quem é quem.
+  const corM = CASA_COR_MATHEUS, corF = CASA_COR_MICHELLE;
+  const indicadoresCasa = {
+    id: 'casaIndicadores',
+    afterDraw(chart){
+      const { ctx, chartArea } = chart;
+      ctx.save();
+      ctx.textAlign = 'left';
+      ctx.font = '700 10px Inter, sans-serif';
+      ctx.fillStyle = corM;
+      ctx.fillText('▲ Matheus', chartArea.right + 6, chartArea.top + 10);
+      ctx.fillStyle = corF;
+      ctx.fillText('▼ Michelle', chartArea.right + 6, chartArea.bottom - 4);
+      ctx.font = '400 8px Inter, sans-serif';
+      ctx.fillStyle = '#9A9AA0';
+      ctx.fillText('deve pagar', chartArea.right + 6, chartArea.top + 21);
+      ctx.fillText('deve pagar', chartArea.right + 6, chartArea.bottom - 14);
+      ctx.restore();
+    }
+  };
 
   if(casaChartAcumulado){
     casaChartAcumulado.data.labels = labels;
     casaChartAcumulado.data.datasets[0].data = dataAcumulado;
-    casaChartAcumulado.data.datasets[0].borderColor = corLinha;
-    casaChartAcumulado.data.datasets[0].backgroundColor = corLinha + '33';
     casaChartAcumulado.update();
   } else {
     const ctx = document.getElementById('casa-chart-acumulado').getContext('2d');
@@ -2593,20 +2613,22 @@ async function carregarCasa(){
         datasets: [{
           label: 'Saldo acumulado',
           data: dataAcumulado,
-          borderColor: corLinha,
-          backgroundColor: corLinha + '33',
-          fill: true,
+          borderColor: corF,
+          segment: { borderColor: c => (c.p1.parsed.y >= 0 ? corM : corF) },
+          fill: { target: 'origin', above: corM + '33', below: corF + '33' },
           tension: 0.25,
           pointRadius: 3,
-          pointBackgroundColor: corLinha
+          pointBackgroundColor: c => (c.raw >= 0 ? corM : corF),
+          pointBorderColor: c => (c.raw >= 0 ? corM : corF)
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        layout: { padding: { right: 64 } },
         scales: {
           x: { ticks: { color: '#9A9AA0', font: { size: 10 } }, grid: { display: false } },
-          y: { ticks: { color: '#9A9AA0', font: { size: 9 }, callback: v => fmtMil(v) + 'k' }, grid: { color: '#2A2A2E' } }
+          y: { ticks: { color: '#9A9AA0', font: { size: 9 }, callback: v => fmtMil(v) + 'k' }, grid: { color: c => (c.tick && c.tick.value === 0 ? '#6A6A70' : '#2A2A2E') } }
         },
         plugins: {
           legend: { display: false },
@@ -2619,7 +2641,7 @@ async function carregarCasa(){
           }
         }
       },
-      plugins: (typeof ChartDataLabels !== 'undefined') ? [ChartDataLabels] : []
+      plugins: (typeof ChartDataLabels !== 'undefined') ? [ChartDataLabels, indicadoresCasa] : [indicadoresCasa]
     });
   }
 
@@ -2636,6 +2658,13 @@ function popularSelectReceitaCasa(){
   sel.innerHTML = opcoes.map(l => `<option value="${l.chave}">${labelMesCasa(l.chave)}</option>`).join('');
   if(valorAtual && opcoes.some(l => l.chave === valorAtual)) sel.value = valorAtual;
   renderReceitaCasa();
+}
+
+// Cores de quem deve no Rateio Casa (positivo = Matheus, negativo = Michelle).
+const CASA_COR_MATHEUS = '#E8622C';
+const CASA_COR_MICHELLE = '#E58AB6';
+function corPessoaCasa(saldo){
+  return saldo > 0 ? CASA_COR_MATHEUS : CASA_COR_MICHELLE;
 }
 
 // Atualiza, a partir do mês escolhido no filtro: (1) o card Saldo Acumulado
@@ -2662,12 +2691,12 @@ function renderReceitaCasa(){
     pessoaEl.textContent = 'Contas batendo';
   } else if(saldo > 0){
     totalEl.textContent = 'R$ ' + fmtDre(saldo);
-    totalEl.style.color = 'var(--green)';
-    pessoaEl.textContent = 'Michelle deve pagar a mais';
+    totalEl.style.color = CASA_COR_MATHEUS;
+    pessoaEl.textContent = 'Matheus deve pagar a mais';
   } else {
     totalEl.textContent = 'R$ ' + fmtDre(Math.abs(saldo));
-    totalEl.style.color = 'var(--red)';
-    pessoaEl.textContent = 'Matheus deve pagar a mais';
+    totalEl.style.color = CASA_COR_MICHELLE;
+    pessoaEl.textContent = 'Michelle deve pagar a mais';
   }
 
   function linhaHtml(label, valor, cor){
