@@ -171,11 +171,15 @@
   .chart-titulo{font-size:13px;color:var(--gray1);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin:18px 0 8px;text-align:center;}
   .chart-titulo.laranja{color:var(--orange);}
 
-  .receita-casa-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px;border-radius:10px;overflow:hidden;}
-  .receita-casa-table td{padding:7px 6px;border-bottom:1px solid var(--line);}
+  /* Receita/Despesa Casa: mesmo visual do Resumo quando abre um grupo (Investimentos) —
+     cartão escuro, faixas laranja translúcidas com texto laranja, linhas finas entre itens. */
+  .receita-casa-table{width:100%;border-collapse:separate;border-spacing:0;font-size:13px;margin-top:6px;border-radius:12px;overflow:hidden;background:var(--panel-2);}
+  .receita-casa-table td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.05);color:var(--gray2);}
   .receita-casa-table td:last-child{text-align:right;white-space:nowrap;}
-  .receita-casa-header td{background:#333338;color:#fff;font-weight:700;border-bottom:none;}
-  .receita-casa-footer td{background:rgba(240,168,120,0.18);font-weight:700;border-bottom:none;}
+  .receita-casa-header td{background:rgba(232,98,44,0.08);color:var(--orange);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;border-bottom:none;}
+  .receita-casa-header td:not(:first-child){font-size:13.5px;text-transform:none;letter-spacing:0;}
+  .receita-casa-footer td{background:var(--panel-2);color:var(--gray2);font-size:15px;font-weight:700;border-top:1px solid var(--line);border-bottom:none;padding:12px 10px;}
+  .receita-casa-footer td:not(:first-child){color:var(--orange);}
 
   .fatura-table{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:0;font-size:11px;border-radius:10px;overflow:hidden;}
   .fatura-table th, .fatura-table td{padding:7px 3px;overflow-wrap:anywhere;}
@@ -1023,6 +1027,11 @@
       <p class="chart-titulo">Tipos de treino</p>
       <div style="position:relative;height:280px;margin-top:8px;">
         <canvas id="analise-chart"></canvas>
+      </div>
+
+      <p class="chart-titulo">Treinos por grupo muscular</p>
+      <div style="position:relative;height:280px;margin-top:8px;">
+        <canvas id="analise-chart-grupos"></canvas>
       </div>
 
       <p class="chart-titulo">Aeróbico</p>
@@ -2661,8 +2670,9 @@ function popularSelectReceitaCasa(){
 }
 
 // Cores de quem deve no Rateio Casa (positivo = Matheus, negativo = Michelle).
+// Mesmos tons de Musculação (laranja) e Crossfit (vinho) da Análise de Treinos.
 const CASA_COR_MATHEUS = '#E8622C';
-const CASA_COR_MICHELLE = '#E58AB6';
+const CASA_COR_MICHELLE = '#7A3B4A';
 function corPessoaCasa(saldo){
   return saldo > 0 ? CASA_COR_MATHEUS : CASA_COR_MICHELLE;
 }
@@ -3573,6 +3583,7 @@ async function excluirTreino(){
 let analiseChart = null;
 let analiseChartTotal = null;
 let analiseChartAerobico = null;
+let analiseChartGrupos = null;
 let analiseChartPace = null;
 const NOMES_MES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
 
@@ -3635,11 +3646,14 @@ async function carregarAnalise(){
   const corridas = [];
   meses.forEach(m => { contagem[m] = { musculacao: 0, aerobico: 0, futebol: 0, crossfit: 0 }; contagemTotal[m] = 0; aerobicoPorMes[m] = {}; });
 
+  const contagemGrupos = {};
   treinos.forEach(t => {
     const chave = t.data_hora.slice(0, 7);
     if(!contagem[chave]) return;
     contagemTotal[chave]++;
     const grupos = t.grupos_musculares || [];
+    // Contagem por grupo muscular (+ Futebol/Crossfit) — aeróbico fica de fora.
+    new Set(grupos).forEach(g => { contagemGrupos[g] = (contagemGrupos[g] || 0) + 1; });
     if(t.aerobico) contagem[chave].aerobico++;
     if(grupos.includes('Futebol')) contagem[chave].futebol++;
     if(grupos.includes('Crossfit')) contagem[chave].crossfit++;
@@ -3752,6 +3766,48 @@ async function carregarAnalise(){
         maintainAspectRatio: false,
         scales: {
           x: { ticks: { color: '#9A9AA0' }, grid: { color: '#2A2A2E' } },
+          y: { beginAtZero: true, ticks: { color: '#9A9AA0', precision: 0 }, grid: { color: '#2A2A2E' } }
+        },
+        plugins: {
+          legend: { display: false },
+          datalabels: {
+            color: '#F2F0EC',
+            anchor: 'end',
+            align: 'top',
+            font: { size: 10, weight: '600' },
+            formatter: (v) => v > 0 ? v : ''
+          }
+        }
+      },
+      plugins: (typeof ChartDataLabels !== 'undefined') ? [ChartDataLabels] : []
+    });
+  }
+
+  // ---------- Gráfico por grupo muscular (total do período, sem aeróbico) ----------
+  const gruposOrdenados = Object.keys(contagemGrupos)
+    .filter(g => contagemGrupos[g] > 0)
+    .sort((a, b) => contagemGrupos[b] - contagemGrupos[a]);
+  const dataGrupos = gruposOrdenados.map(g => contagemGrupos[g]);
+  const coresGrupos = gruposOrdenados.map(g => g === 'Crossfit' ? cores.crossfit : (g === 'Futebol' ? cores.futebol : cores.musculacao));
+
+  const ctxGrupos = document.getElementById('analise-chart-grupos').getContext('2d');
+  if(analiseChartGrupos){
+    analiseChartGrupos.data.labels = gruposOrdenados;
+    analiseChartGrupos.data.datasets[0].data = dataGrupos;
+    analiseChartGrupos.data.datasets[0].backgroundColor = coresGrupos;
+    analiseChartGrupos.update();
+  } else {
+    analiseChartGrupos = new Chart(ctxGrupos, {
+      type: 'bar',
+      data: {
+        labels: gruposOrdenados,
+        datasets: [{ label: 'Treinos', data: dataGrupos, backgroundColor: coresGrupos }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: { ticks: { color: '#9A9AA0' }, grid: { display: false } },
           y: { beginAtZero: true, ticks: { color: '#9A9AA0', precision: 0 }, grid: { color: '#2A2A2E' } }
         },
         plugins: {
