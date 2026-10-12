@@ -1076,6 +1076,11 @@
         <datalist id="ativo-tickers-lista"></datalist>
       </div>
 
+      <div class="field" id="ativo-conta-wrap" style="display:none;">
+        <label>Conta de investimento</label>
+        <select id="ativo-conta"></select>
+      </div>
+
       <div class="field">
         <label>Valor (R$)</label>
         <input id="ativo-valor" type="text" inputmode="decimal" placeholder="Ex: 162,11" />
@@ -1112,6 +1117,8 @@
           <span id="pos-saldo-investimento">...</span>
         </div>
       </div>
+
+      <div id="pos-saldo-contas"></div>
 
       <div id="pos-lista"></div>
       <p class="r-hint">Cotação é manual por enquanto — toca no valor de um ativo pra atualizar. Investido/Rendimento são acumulados desde o início. Toca no nome do grupo pra abrir os ativos.</p>
@@ -1369,6 +1376,9 @@ function irParaView(nome){
   }
   if(nome === 'analise' && !analiseCarregada){
     carregarAnalise();
+  }
+  if(nome === 'ativos'){
+    prepararFormAtivoConta();
   }
   if(nome === 'posicao'){
     carregarPosicao();
@@ -1979,6 +1989,18 @@ async function carregarPatrimonioMichelle(){
     }
   });
 
+  // Investimentos da Michelle: "Saldo Investimento" (totalizadora) com uma linha
+  // por banco, já considerando os lançamentos de ativos feitos em cada conta, mais
+  // o valor de mercado de FIIs/Ações dela.
+  if(gruposMap['Investimentos']){
+    const [saldoInv, posInv] = await Promise.all([calcularSaldoInvestimentoMichelle(lancs), calcularPosicaoAtivos()]);
+    const itensInv = saldoInv.contas.map(c => ({ conta: c.nome, moeda: 'BRL', saldo: c.saldo, tipoInv: 'saldo' }));
+    if(!posInv.erro && Math.abs(posInv.patrimonioTotal) >= 0.01){
+      itensInv.push({ conta: 'FIIs e Ações', moeda: 'BRL', saldo: posInv.patrimonioTotal, tipoInv: 'ativos' });
+    }
+    gruposMap['Investimentos'] = itensInv;
+  }
+
   // BTG+ Michelle: dívida em aberto no cartão compartilhado entra negativa no
   // patrimônio dela (o espelho do "a receber" positivo no Caixa líquido do Matheus).
   if(btgMichelleAberto){
@@ -2015,7 +2037,25 @@ async function carregarPatrimonioMichelle(){
     });
     const multiMoeda = ordemMoedas.length > 1;
 
-    const corpoHtml = ordemMoedas.map(moeda => {
+    const linhaSimples = it => {
+      const cor = it.saldo < 0 ? 'var(--red)' : 'var(--gray2)';
+      return `<div class="sub-linha"><span>${it.conta}</span><span style="color:${cor};font-weight:500;">${fmt(it.saldo)}</span></div>`;
+    };
+
+    const corpoHtml = (nomeGrupo === 'Investimentos' && itens.some(it => it.tipoInv)) ? (() => {
+      const saldos = itens.filter(it => it.tipoInv === 'saldo');
+      const ativos = itens.filter(it => it.tipoInv === 'ativos');
+      const totalSaldo = saldos.reduce((s, it) => s + it.saldo, 0);
+      const blocoSaldo = saldos.length ? `
+        <div class="moeda-grupo">
+          <div class="moeda-total-linha">
+            <span>Saldo Investimento</span>
+            <span>${fmt(totalSaldo)}</span>
+          </div>
+          ${saldos.map(linhaSimples).join('')}
+        </div>` : '';
+      return blocoSaldo + ativos.map(linhaSimples).join('');
+    })() : ordemMoedas.map(moeda => {
       const contasDaMoeda = porMoeda[moeda];
       const linhas = contasDaMoeda.map(it => {
         const cor = it.saldo < 0 ? 'var(--red)' : 'var(--gray2)';
@@ -3879,6 +3919,11 @@ async function carregarAnalise(){
     return dia + '/' + mes + '/' + ano.slice(2);
   });
   const paceData = corridas.map(c => Number(c.pace.toFixed(2)));
+  // Pace é guardado em minutos decimais (5,75); aqui exibe como min:seg (5:45).
+  const fmtPace = v => {
+    const total = Math.round(Number(v) * 60);
+    return Math.floor(total / 60) + ':' + String(total % 60).padStart(2, '0');
+  };
 
   const ctxPace = document.getElementById('analise-chart-pace').getContext('2d');
   if(analiseChartPace){
@@ -3906,7 +3951,7 @@ async function carregarAnalise(){
         maintainAspectRatio: false,
         scales: {
           x: { type: 'category', ticks: { color: '#9A9AA0', font: { size: 10 } }, grid: { display: false } },
-          y: { ticks: { color: '#9A9AA0', callback: v => v + ' min/km' }, grid: { color: '#2A2A2E' } }
+          y: { ticks: { color: '#9A9AA0', stepSize: 0.25, callback: v => fmtPace(v) + ' min/km' }, grid: { color: '#2A2A2E' } }
         },
         plugins: {
           legend: { display: false },
@@ -3915,8 +3960,9 @@ async function carregarAnalise(){
             anchor: 'end',
             align: 'top',
             font: { size: 9, weight: '600' },
-            formatter: (v) => v.toFixed(2)
-          }
+            formatter: (v) => fmtPace(v)
+          },
+          tooltip: { callbacks: { label: ctx => fmtPace(ctx.parsed.y) + ' min/km' } }
         }
       },
       plugins: (typeof ChartDataLabels !== 'undefined') ? [ChartDataLabels] : []
@@ -4054,7 +4100,7 @@ function aplicarRestricaoPerfil(){
   document.querySelectorAll('.menu-nav .menu-section').forEach(sec => { sec.style.display = ''; });
 
   if(restrito){
-    const idsPermitidos = ['menu-btn-resumo', 'menu-btn-lancar', 'menu-btn-lancamentos', 'menu-btn-treinos', 'menu-btn-historico-treinos', 'menu-btn-analise', 'menu-btn-fatura-btg'];
+    const idsPermitidos = ['menu-btn-resumo', 'menu-btn-lancar', 'menu-btn-lancamentos', 'menu-btn-treinos', 'menu-btn-historico-treinos', 'menu-btn-analise', 'menu-btn-fatura-btg', 'menu-btn-ativos', 'menu-btn-posicao', 'menu-btn-historico'];
     document.querySelectorAll('.menu-nav button').forEach(btn => {
       if(!idsPermitidos.includes(btn.id)) btn.style.display = 'none';
     });
@@ -4161,9 +4207,17 @@ async function salvarAtivo(){
   const qtdRaw = document.getElementById('ativo-qtd').value;
   const qtd = qtdRaw ? parseNumBr(qtdRaw) : null;
   const obs = document.getElementById('obs-ativo').value || null;
+  await garantirPerfil();
+  const ehMi = ehMichelle();
+  const contaId = ehMi ? (document.getElementById('ativo-conta').value || null) : null;
+  const titular = (perfilAtual && perfilAtual.nome) ? perfilAtual.nome : 'Matheus';
 
   if(!data){
     showMsgAtivo('Escolhe uma data.', 'err');
+    return;
+  }
+  if(ehMi && !contaId){
+    showMsgAtivo('Escolhe a conta de investimento.', 'err');
     return;
   }
   if(!valor || isNaN(valor) || valor <= 0){
@@ -4192,7 +4246,9 @@ async function salvarAtivo(){
     ticker: precisaTicker ? ticker : null,
     valor: valor,
     quantidade: precisaQtd ? qtd : null,
-    observacao: obs
+    observacao: obs,
+    titular: titular,
+    conta_id: contaId
   }]);
 
   btn.disabled = false;
@@ -4208,6 +4264,69 @@ async function salvarAtivo(){
     setDefaultData('data-ativo');
     carregarTickersConhecidos();
   }
+}
+
+function ehMichelle(){
+  return !!perfilAtual && perfilAtual.nome === 'Michelle';
+}
+
+// Contas de investimento da Michelle (uma por banco: C6 Invest, XP, Rico...).
+async function contasInvestMichelle(){
+  const { data } = await sb.from('contas').select('id, nome, ordem')
+    .eq('ativa', true).eq('titular', 'Michelle').eq('grupo_resumo', 'Investimentos').order('ordem');
+  return data || [];
+}
+
+async function prepararFormAtivoConta(){
+  await garantirPerfil();
+  const wrap = document.getElementById('ativo-conta-wrap');
+  if(!ehMichelle()){ wrap.style.display = 'none'; return; }
+  const contas = await contasInvestMichelle();
+  const sel = document.getElementById('ativo-conta');
+  const atual = sel.value;
+  sel.innerHTML = contas.map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
+  if(atual) sel.value = atual;
+  wrap.style.display = 'block';
+}
+
+// Saldo Investimento da Michelle, por conta/banco: saldo da conta nos lançamentos
+// (ex: entradas Entre Contas) + efeito dos lançamentos de ativos feitos nela
+// (compra e taxa/multa reduzem; venda, rendimento e rendimento em conta aumentam).
+async function calcularSaldoInvestimentoMichelle(lancsPre){
+  const contas = await contasInvestMichelle();
+  if(contas.length === 0) return { contas: [], total: 0 };
+  const ids = new Set(contas.map(c => c.id));
+
+  let lancs = lancsPre;
+  if(!lancs){
+    lancs = [];
+    const PAGE = 1000;
+    for(let from = 0; ; from += PAGE){
+      const { data: pagina, error } = await sb.from('lancamentos').select('conta_id, fluxo, valor, moeda').order('id').range(from, from + PAGE - 1);
+      if(error) break;
+      lancs = lancs.concat(pagina);
+      if(pagina.length < PAGE) break;
+    }
+  }
+  const { data: ativos } = await sb.from('ativos_lancamentos').select('tipo, valor, conta_id');
+
+  const centavos = v => Math.round(Number(v) * 100);
+  const cent = {};
+  contas.forEach(c => { cent[c.id] = 0; });
+  lancs.forEach(l => {
+    if(!ids.has(l.conta_id)) return;
+    cent[l.conta_id] += (l.fluxo === 'entrada' ? 1 : -1) * centavos(l.valor);
+  });
+  (ativos || []).forEach(a => {
+    if(!ids.has(a.conta_id)) return;
+    const v = centavos(a.valor);
+    if(a.tipo === 'Compra' || a.tipo === 'Taxa' || a.tipo === 'Multa') cent[a.conta_id] -= v;
+    else cent[a.conta_id] += v;
+  });
+
+  const lista = contas.map(c => ({ id: c.id, nome: c.nome, saldo: cent[c.id] / 100 }));
+  const total = lista.reduce((s, c) => s + Math.round(c.saldo * 100), 0) / 100;
+  return { contas: lista, total };
 }
 
 function ehFii(ticker){
@@ -4353,8 +4472,20 @@ async function carregarPosicao(){
   listaEl.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:20px 0;">Carregando...</p>';
   totalEl.textContent = '...';
   saldoEl.textContent = '...';
+  await garantirPerfil();
+  const saldoContasEl = document.getElementById('pos-saldo-contas');
+  saldoContasEl.innerHTML = '';
 
-  const [posicao, saldoInvestimento] = await Promise.all([calcularPosicaoAtivos(), calcularSaldoInvestimento()]);
+  const [posicao, saldoDados] = await Promise.all([
+    calcularPosicaoAtivos(),
+    ehMichelle() ? calcularSaldoInvestimentoMichelle() : calcularSaldoInvestimento()
+  ]);
+  const saldoInvestimento = ehMichelle() ? saldoDados.total : saldoDados;
+  if(ehMichelle() && saldoDados.contas.length){
+    saldoContasEl.innerHTML = '<div class="moeda-grupo" style="margin-bottom:10px;">' + saldoDados.contas.map(c =>
+      `<div class="sub-linha"><span>${c.nome}</span><span style="color:${c.saldo < 0 ? 'var(--red)' : 'var(--gray2)'};font-weight:500;">${fmtR$(c.saldo)}</span></div>`
+    ).join('') + '</div>';
+  }
 
   if(posicao.erro){
     listaEl.innerHTML = '<p style="color:var(--red);font-size:13px;">Erro: ' + posicao.erro + '</p>';
@@ -4693,7 +4824,8 @@ async function cadastrarTicker(){
 }
 
 async function excluirTicker(ticker){
-  const { count, error: e1 } = await sb.from('ativos_lancamentos').select('id', { count: 'exact', head: true }).eq('ticker', ticker);
+  // RPC conta lançamentos de qualquer titular (a lista de tickers é compartilhada).
+  const { data: count, error: e1 } = await sb.rpc('ticker_em_uso', { t: ticker });
   if(e1){
     showMsgAjustes('Erro ao verificar: ' + e1.message, 'err');
     return;
