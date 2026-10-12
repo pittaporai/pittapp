@@ -1121,8 +1121,8 @@
       <div id="pos-saldo-contas"></div>
 
       <div id="pos-lista"></div>
-      <p class="r-hint">Cotação é manual por enquanto — toca no valor de um ativo pra atualizar. Investido/Rendimento são acumulados desde o início. Toca no nome do grupo pra abrir os ativos.</p>
-      <p class="r-hint">Última atualização de cotações: 19/09/2026. Diferenças de poucos centavos no Saldo Investimento podem ocorrer por arredondamento nos cálculos — não afetam os lançamentos.</p>
+      <p class="r-hint">Toca no valor de um ativo pra ajustar a cotação à mão, se precisar (a próxima atualização automática sobrescreve). Investido/Rendimento são acumulados desde o início. Toca no nome do grupo pra abrir os ativos.</p>
+      <p class="r-hint">Cotações atualizadas automaticamente de segunda a sexta (depois do fechamento da bolsa). Última atualização: <span id="pos-ultima-cotacao">–</span>. Diferenças de poucos centavos no Saldo Investimento podem ocorrer por arredondamento nos cálculos — não afetam os lançamentos.</p>
     </div>
   </div>
 
@@ -4405,7 +4405,8 @@ async function calcularPosicaoAtivos(titular){
   const totalAcoes = acoes.reduce((s, p) => s + (p.quantidade > 0 ? p.valorAtual : 0), 0);
   const patrimonioTotal = totalFiis + totalAcoes;
 
-  return { fiis, acoes, totalFiis, totalAcoes, patrimonioTotal, custosGerais };
+  const ultimaCotacao = cotacoes.reduce((mx, c) => (c.atualizado_em && c.atualizado_em > mx ? c.atualizado_em : mx), '');
+  return { fiis, acoes, totalFiis, totalAcoes, patrimonioTotal, custosGerais, ultimaCotacao };
 }
 
 // "Saldo Investimento" = dinheiro que já entrou no "bolso" de FIIs/Ações (aportes
@@ -4494,15 +4495,22 @@ async function carregarPosicao(){
     return;
   }
 
-  const { fiis, acoes, totalFiis, totalAcoes, patrimonioTotal, custosGerais } = posicao;
+  const { fiis, acoes, totalFiis, totalAcoes, patrimonioTotal, custosGerais, ultimaCotacao } = posicao;
+  const ultEl = document.getElementById('pos-ultima-cotacao');
+  if(ultEl) ultEl.textContent = ultimaCotacao ? new Date(ultimaCotacao).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '–';
   saldoEl.textContent = fmtR$(saldoInvestimento);
+
+  // Ativos com quantidade em carteira mas sem cotação (valor 0 ou ausente): o
+  // valor atual deles sai zerado e subestima o patrimônio — sinaliza na tela.
+  const semCotacao = [...fiis, ...acoes].filter(p => p.quantidade > 0 && !(p.cotacaoAtual > 0)).map(p => p.ticker);
 
   function renderItem(p){
     const corRent = p.rentabilidade < 0 ? 'var(--red)' : 'var(--green)';
+    const faltaCot = p.quantidade > 0 && !(p.cotacaoAtual > 0);
     return `
       <div class="pos-item">
         <div class="pos-item-top">
-          <span class="pos-ticker">${p.ticker}</span>
+          <span class="pos-ticker">${p.ticker}${faltaCot ? ' <span style="color:var(--red);font-size:11px;font-weight:700;">⚠ sem cotação</span>' : ''}</span>
           <span class="pos-valor-atual" onclick="editarCotacao('${p.ticker}', ${p.cotacaoAtual})">R$ ${p.cotacaoAtual.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
         </div>
         <div class="pos-item-sub">
@@ -4540,7 +4548,10 @@ async function carregarPosicao(){
   totalEl.textContent = fmtR$(patrimonioTotal + saldoInvestimento);
 
   const gruposHtml = renderGrupo('fiis', 'FIIs', fiis, totalFiis) + renderGrupo('acoes', 'Ações', acoes, totalAcoes);
-  listaEl.innerHTML = gruposHtml || '<p style="color:var(--muted);font-size:13px;text-align:center;padding:20px 0;">Nenhum ativo lançado ainda.</p>';
+  const avisoCot = semCotacao.length
+    ? '<p style="color:var(--red);font-size:12.5px;text-align:center;padding:8px 4px;">⚠ Sem cotação para: ' + semCotacao.join(', ') + '. O valor atual deles está zerado no patrimônio.</p>'
+    : '';
+  listaEl.innerHTML = avisoCot + (gruposHtml || '<p style="color:var(--muted);font-size:13px;text-align:center;padding:20px 0;">Nenhum ativo lançado ainda.</p>');
   if(custosGerais > 0){
     listaEl.innerHTML += '<p class="r-hint">Taxas/multas gerais (sem ticker): R$ ' + custosGerais.toLocaleString('pt-BR',{minimumFractionDigits:2}) + '</p>';
   }
