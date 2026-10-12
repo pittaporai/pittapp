@@ -1993,7 +1993,7 @@ async function carregarPatrimonioMichelle(){
   // por banco, já considerando os lançamentos de ativos feitos em cada conta, mais
   // o valor de mercado de FIIs/Ações dela.
   if(gruposMap['Investimentos']){
-    const [saldoInv, posInv] = await Promise.all([calcularSaldoInvestimentoMichelle(lancs), calcularPosicaoAtivos()]);
+    const [saldoInv, posInv] = await Promise.all([calcularSaldoInvestimentoMichelle(lancs), calcularPosicaoAtivos('Michelle')]);
     const itensInv = saldoInv.contas.map(c => ({ conta: c.nome, moeda: 'BRL', saldo: c.saldo, tipoInv: 'saldo' }));
     if(!posInv.erro && Math.abs(posInv.patrimonioTotal) >= 0.01){
       itensInv.push({ conta: 'FIIs e Ações', moeda: 'BRL', saldo: posInv.patrimonioTotal, tipoInv: 'ativos' });
@@ -4308,7 +4308,7 @@ async function calcularSaldoInvestimentoMichelle(lancsPre){
       if(pagina.length < PAGE) break;
     }
   }
-  const { data: ativos } = await sb.from('ativos_lancamentos').select('tipo, valor, conta_id');
+  const { data: ativos } = await sb.from('ativos_lancamentos').select('tipo, valor, conta_id').eq('titular', 'Michelle');
 
   const centavos = v => Math.round(Number(v) * 100);
   const cent = {};
@@ -4343,12 +4343,13 @@ function togglePosGrupo(nome){
 
 // Cálculo compartilhado da posição de FIIs e Ações (usado pela aba Posição e
 // também pelo Resumo, que precisa só do patrimonioTotal pra somar em Investimentos).
-async function calcularPosicaoAtivos(){
+async function calcularPosicaoAtivos(titular){
+  titular = titular || 'Matheus';
   let lancs = [];
   let erro = null;
   const PAGE = 1000;
   for(let from = 0; ; from += PAGE){
-    const { data: pagina, error } = await sb.from('ativos_lancamentos').select('tipo, ticker, valor, quantidade').order('id').range(from, from + PAGE - 1);
+    const { data: pagina, error } = await sb.from('ativos_lancamentos').select('tipo, ticker, valor, quantidade').eq('titular', titular).order('id').range(from, from + PAGE - 1);
     if(error){ erro = error; break; }
     lancs = lancs.concat(pagina);
     if(pagina.length < PAGE) break;
@@ -4440,7 +4441,7 @@ async function calcularSaldoInvestimento(){
   const [aportesResp, resgatesResp, ativosResp] = await Promise.all([
     catSaidaId ? sb.from('lancamentos').select('valor').eq('fluxo', 'saida').eq('categoria_id', catSaidaId).eq('dono', 'Matheus') : Promise.resolve({ data: [] }),
     catEntradaId ? sb.from('lancamentos').select('valor').eq('fluxo', 'entrada').eq('categoria_id', catEntradaId).eq('dono', 'Matheus') : Promise.resolve({ data: [] }),
-    sb.from('ativos_lancamentos').select('tipo, valor')
+    sb.from('ativos_lancamentos').select('tipo, valor').eq('titular', 'Matheus')
   ]);
 
   // Soma tudo em centavos (inteiros) e só converte pra reais no final — evita a
@@ -4477,7 +4478,7 @@ async function carregarPosicao(){
   saldoContasEl.innerHTML = '';
 
   const [posicao, saldoDados] = await Promise.all([
-    calcularPosicaoAtivos(),
+    calcularPosicaoAtivos(ehMichelle() ? 'Michelle' : 'Matheus'),
     ehMichelle() ? calcularSaldoInvestimentoMichelle() : calcularSaldoInvestimento()
   ]);
   const saldoInvestimento = ehMichelle() ? saldoDados.total : saldoDados;
@@ -4554,6 +4555,7 @@ async function carregarHistorico(){
 
   let q = sb.from('ativos_lancamentos')
     .select('id, data_hora, tipo, ticker, valor, quantidade, observacao')
+    .eq('titular', (perfilAtual && perfilAtual.nome) || 'Matheus')
     .order('data_hora', { ascending: false })
     .limit(1000);
 
