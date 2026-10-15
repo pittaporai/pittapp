@@ -1324,7 +1324,9 @@ function inicioFaturaBtgAtual(){
   const hoje = new Date();
   let ano = hoje.getFullYear();
   let mes = hoje.getMonth() + 1;
-  if(hoje.getDate() >= 15){
+  // A fatura do ciclo que fechou dia 10 só sai da tela depois do vencimento (dia 15):
+  // some a partir do dia 16.
+  if(hoje.getDate() >= 16){
     mes++;
     if(mes > 12){ mes = 1; ano++; }
   }
