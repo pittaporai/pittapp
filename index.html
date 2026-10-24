@@ -103,18 +103,29 @@
   .dre-row-l1 td:first-child::before{content:'▸ ';display:inline-block;color:var(--muted);font-size:10px;transition:transform .15s;}
   .dre-row-l1.fechado td:first-child::before{content:'▾ ';}
   /* Nível 2 — grupos (Empreendedorismo, Outros, Receitas...): cinza intermediário, com linha sutil separando do próximo */
-  .dre-row-l2{background:#E8E8E8;font-weight:700;color:#808080;cursor:pointer;}
-  .dre-row-l2 td{border-bottom:1px solid rgba(0,0,0,.08);}
-  .dre-row-l2 td:nth-child(4){background:#FBE2D5;color:#BE5014;}
-  .dre-row-l2 td:nth-child(5){background:#DAE9F8;color:#215C98;}
+  .dre-row-l2{background:#1E1E21;font-weight:700;color:var(--gray2);cursor:pointer;}
+  .dre-row-l2 td:nth-child(4){background:rgba(233,113,50,0.22);color:#F2A37A;}
+  .dre-row-l2 td:nth-child(5){background:rgba(33,92,152,0.38);color:#A6C9EC;}
   .dre-row-l2 td:first-child::before{content:'▸ ';display:inline-block;color:var(--muted);font-size:10px;}
   .dre-row-l2.fechado td:first-child::before{content:'▾ ';}
   /* Nível 3 — itens (Salário, Benefício...): sem fundo de grupo, indentado, com linha sutil separando do próximo */
   .dre-row-l3{background:#E8E8E8;color:#808080;}
-  .dre-row-l3 td{border-bottom:1px solid rgba(0,0,0,.06);}
+  .dre-row-l3{cursor:pointer;}
   .dre-row-l3 td:first-child{padding-left:14px;color:#808080;}
   tr.dre-hide{display:none;}
   /* linhas brancas dividindo as células da tabela DRE */
+  .dre-table:not(.casa-table){border:1px solid #fff;}
+  .dre-table:not(.casa-table) th{text-align:center !important;}
+  .dre-table:not(.casa-table) tfoot td{border-bottom:none;}
+  .dre-table tr.dre-sel td:first-child{box-shadow:inset 3px 0 0 var(--orange);}
+  #dre-chart-cards .lbl{margin:0 0 3px;}
+  #dre-chart-cards .num{display:block;}
+  .anal-table{width:100%;table-layout:fixed;border-collapse:collapse;font-size:10.5px;}
+  .anal-table th{background:#000;color:#fff;font-size:9px;text-transform:uppercase;padding:7px 4px;text-align:center;}
+  .anal-table td{padding:6px 4px;border-bottom:1px solid rgba(255,255,255,.08);color:var(--gray2);vertical-align:top;overflow-wrap:anywhere;}
+  .anal-table td:nth-child(3){text-align:right;white-space:nowrap;font-weight:600;}
+  .anal-table td:nth-child(4){color:var(--muted);}
+  .anal-table tfoot td{font-weight:700;border-top:1px solid #fff;border-bottom:none;}
   .dre-table:not(.casa-table) th, .dre-table:not(.casa-table) td{border-right:1px solid #fff;border-bottom:1px solid #fff;}
   .dre-table:not(.casa-table) th:last-child, .dre-table:not(.casa-table) td:last-child{border-right:none;}
   .dre-row-l1 td:first-child::before, .dre-row-l2 td:first-child::before{font-size:15px !important;line-height:1;vertical-align:-1px;}
@@ -637,7 +648,7 @@
               <th>Orçado</th>
               <th id="dre-th-ytd">YTD</th>
               <th>Realizado</th>
-              <th style="color:#7A3B4A;">Δ</th>
+              <th>Δ</th>
             </tr>
           </thead>
           <tbody id="dre-tbody"></tbody>
@@ -678,10 +689,10 @@
       </div>
 
       <div class="destaque-sub" id="dre-chart-cards" style="margin:14px 0 4px;">
-        <div class="destaque-sub-item"><span class="num" id="dre-card-orcado">–</span><span class="lbl">Orçado (ano)</span></div>
-        <div class="destaque-sub-item"><span class="num" id="dre-card-ytd">–</span><span class="lbl">Orçado YTD</span></div>
-        <div class="destaque-sub-item"><span class="num" id="dre-card-realizado" style="color:var(--orange);">–</span><span class="lbl">Realizado</span></div>
-        <div class="destaque-sub-item"><span class="num" id="dre-card-delta">–</span><span class="lbl">Δ</span></div>
+        <div class="destaque-sub-item"><span class="lbl">Orçado</span><span class="num" id="dre-card-orcado">–</span></div>
+        <div class="destaque-sub-item"><span class="lbl">Orçado YTD</span><span class="num" id="dre-card-ytd">–</span></div>
+        <div class="destaque-sub-item"><span class="lbl">Realizado</span><span class="num" id="dre-card-realizado" style="color:var(--orange);">–</span></div>
+        <div class="destaque-sub-item"><span class="lbl">Δ</span><span class="num" id="dre-card-delta">–</span></div>
       </div>
 
       <div style="position:relative;height:230px;margin-top:12px;">
@@ -693,6 +704,17 @@
         <canvas id="dre-chart-acumulado"></canvas>
       </div>
       <p class="r-hint" id="dre-chart-hint"></p>
+
+      <p class="chart-titulo laranja" style="margin-top:28px;">Analítico</p>
+      <p class="r-hint" id="dre-anal-sub" style="margin-top:-4px;"></p>
+      <div class="dre-scroll">
+        <table class="anal-table">
+          <colgroup><col style="width:17%"><col style="width:33%"><col style="width:18%"><col style="width:32%"></colgroup>
+          <thead><tr><th>Data</th><th>Categoria</th><th>Valor</th><th>Observação</th></tr></thead>
+          <tbody id="dre-anal-tbody"></tbody>
+          <tfoot id="dre-anal-tfoot"></tfoot>
+        </table>
+      </div>
     </div>
   </div>
 
@@ -2162,7 +2184,7 @@ function dreLeavesDe(escopo){
       codigo: r.codigo, fluxo: r.fluxo, fluxoLanc: lancSaida ? 'saida' : r.fluxo,
       l2: pai ? pai.descricao : 'Outros', desc: r.descricao, regra: r.regra,
       grupo: r.grupo_app, cats: r.categorias_app || [],
-      orc: r.meses.map(Number), real: Array(12).fill(0)
+      orc: r.meses.map(Number), real: Array(12).fill(0), itens: []
     };
   });
 }
@@ -2176,7 +2198,7 @@ function prepararLancDre(raw, cotMensais, config){
     const [a, m] = ch.split('-').map(Number);
     if(a !== DRE_ANO) return;
     const brl = Number(l.valor) * taxaCasaMes(l.moeda || 'BRL', ch, cotMensais, config);
-    out.push({ m: m - 1, d: l.dono, f: l.fluxo, g: cat.grupo, n: cat.nome, s: l.fluxo === 'entrada' ? brl : -brl });
+    out.push({ m: m - 1, dt: l.data_hora, obs: l.observacao, d: l.dono, f: l.fluxo, g: cat.grupo, n: cat.nome, s: l.fluxo === 'entrada' ? brl : -brl });
   });
   return out;
 }
@@ -2210,7 +2232,7 @@ function dreMontarModelo(view, mesIdx){
   const extras = {};
   const extraLeaf = (f, g, n) => {
     const k = dreChave(f, g, n);
-    if(!extras[k]) extras[k] = { codigo: 'x:' + k, fluxo: f, fluxoLanc: f, l2: g, desc: n, regra: 'extra', grupo: g, cats: [n], orc: Array(12).fill(0), real: Array(12).fill(0), extra: true };
+    if(!extras[k]) extras[k] = { codigo: 'x:' + k, fluxo: f, fluxoLanc: f, l2: g, desc: n, regra: 'extra', grupo: g, cats: [n], orc: Array(12).fill(0), real: Array(12).fill(0), itens: [], extra: true };
     return extras[k];
   };
 
@@ -2232,6 +2254,8 @@ function dreMontarModelo(view, mesIdx){
     }
     if(!leaf) leaf = extraLeaf(l.f, l.g, l.n);
     leaf.real[l.m] += l.s * w;
+    const tag = view === 'Matheus' ? (l.d === 'Casa' ? ' · Casa ' + Math.round(w * 100) + '%' : '') : (view === 'Todos' && l.d !== 'Matheus' ? ' · ' + l.d : '');
+    leaf.itens.push({ m: l.m, dt: l.dt, cat: l.g + ' › ' + l.n + tag, valor: l.s * w, obs: l.obs || '' });
   });
 
   const l1s = [
@@ -2287,7 +2311,7 @@ async function carregarDRE(){
   const PAGE = 1000;
   for(let from = 0; ; from += PAGE){
     const { data: pagina, error: ep } = await sb.from('lancamentos')
-      .select('fluxo, valor, moeda, data_hora, dono, categorias(nome, grupo)')
+      .select('fluxo, valor, moeda, data_hora, dono, observacao, categorias(nome, grupo)')
       .gte('data_hora', DRE_ANO + '-01-01T00:00:00')
       .lt('data_hora', (DRE_ANO + 1) + '-01-01T00:00:00')
       .order('id')
@@ -2343,6 +2367,7 @@ function recalcularDre(){
   }
 
   renderizarTabelaDre();
+  renderizarAnalitico();
   popularFiltrosDreChart();
 }
 
@@ -2357,17 +2382,25 @@ function toggleDreOrdenacao(){
 const dreAbertoL1 = new Set();
 const dreAbertoL2 = new Set();
 let dreOrdemL2 = {};
+let dreRefs = [];
+let dreAnalSel = null;
+
+const dreMesmoPath = (a, b) => a && b && a.fluxo === b.fluxo && a.l2 === b.l2 && a.leaf === b.leaf;
 
 function renderizarTabelaDre(){
   const tbody = document.getElementById('dre-tbody');
   if(!dreModelo){ tbody.innerHTML = ''; return; }
   const porDelta = (a, b) => (b.realYtd - b.orcYtd) - (a.realYtd - a.orcYtd);
   dreOrdemL2 = {};
+  dreRefs = [];
+  const ref = path => { dreRefs.push(path); return dreRefs.length - 1; };
+  const selCls = path => (dreAnalSel && dreAnalSel.mes === null && dreMesmoPath(dreAnalSel, path)) ? ' dre-sel' : '';
 
   let html = '';
   dreModelo.l1s.forEach((r1, i) => {
     const aberto1 = dreAbertoL1.has(i);
-    html += `<tr class="dre-row-l1${aberto1 ? ' fechado' : ''}" onclick="toggleDreL1(${i})">
+    const p1 = { fluxo: r1.fluxo };
+    html += `<tr class="dre-row-l1${aberto1 ? ' fechado' : ''}${selCls(p1)}" onclick="cliqueDre(${ref(p1)}, 1, ${i})">
       <td>${r1.desc}</td>
       ${celulasDre(r1)}
     </tr>`;
@@ -2377,7 +2410,8 @@ function renderizarTabelaDre(){
     dreOrdemL2[i] = filhos2.map(x => x.desc);
     filhos2.forEach((r2, j) => {
       const aberto2 = dreAbertoL2.has(i + '|' + r2.desc);
-      html += `<tr class="dre-row-l2${aberto2 ? ' fechado' : ''}${aberto1 ? '' : ' dre-hide'}" onclick="toggleDreL2(${i}, ${j})">
+      const p2 = { fluxo: r1.fluxo, l2: r2.desc };
+      html += `<tr class="dre-row-l2${aberto2 ? ' fechado' : ''}${aberto1 ? '' : ' dre-hide'}${selCls(p2)}" onclick="cliqueDre(${ref(p2)}, 2, ${i}, ${j})">
         <td>${r2.desc}</td>
         ${celulasDre(r2)}
       </tr>`;
@@ -2385,7 +2419,8 @@ function renderizarTabelaDre(){
       let filhos3 = r2.leaves;
       if(dreOrdenarPorDelta) filhos3 = [...filhos3].sort(porDelta);
       filhos3.forEach(r3 => {
-        html += `<tr class="dre-row-l3${(aberto1 && aberto2) ? '' : ' dre-hide'}">
+        const p3 = { fluxo: r1.fluxo, l2: r2.desc, leaf: r3.desc };
+        html += `<tr class="dre-row-l3${(aberto1 && aberto2) ? '' : ' dre-hide'}${selCls(p3)}" onclick="cliqueDre(${ref(p3)}, 3)">
           <td>${r3.desc}</td>
           ${celulasDre(r3)}
         </tr>`;
@@ -2396,15 +2431,73 @@ function renderizarTabelaDre(){
   tbody.innerHTML = html;
 }
 
-function toggleDreL1(i){
-  if(dreAbertoL1.has(i)) dreAbertoL1.delete(i); else dreAbertoL1.add(i);
+function cliqueDre(refIdx, nivel, i, j){
+  const path = dreRefs[refIdx];
+  if(nivel === 1){
+    if(dreAbertoL1.has(i)) dreAbertoL1.delete(i); else dreAbertoL1.add(i);
+  } else if(nivel === 2){
+    const chave = i + '|' + (dreOrdemL2[i] || [])[j];
+    if(dreAbertoL2.has(chave)) dreAbertoL2.delete(chave); else dreAbertoL2.add(chave);
+  }
+  dreAnalSel = { fluxo: path.fluxo, l2: path.l2, leaf: path.leaf, mes: null };
   renderizarTabelaDre();
+  renderizarAnalitico();
 }
 
-function toggleDreL2(i, j){
-  const chave = i + '|' + (dreOrdemL2[i] || [])[j];
-  if(dreAbertoL2.has(chave)) dreAbertoL2.delete(chave); else dreAbertoL2.add(chave);
+function cliqueGraficoDre(els){
+  if(!els || !els.length || !dreModelo) return;
+  const fluxo = document.getElementById('dre-chart-fluxo').value;
+  const l2 = document.getElementById('dre-chart-grupo').value;
+  const leaf = document.getElementById('dre-chart-subgrupo').value || undefined;
+  dreAnalSel = { fluxo, l2, leaf, mes: els[0].index };
   renderizarTabelaDre();
+  renderizarAnalitico();
+}
+
+function dreNoPorPath(p){
+  const l1 = dreModelo.l1s.find(x => x.fluxo === p.fluxo);
+  if(!l1) return null;
+  if(!p.l2) return l1;
+  const l2 = l1.l2s.find(x => x.desc === p.l2);
+  if(!l2) return null;
+  if(!p.leaf) return l2;
+  return l2.leaves.find(x => x.desc === p.leaf) || null;
+}
+
+function dreItensDoNo(n){
+  if(n.itens) return n.itens;
+  if(n.leaves) return n.leaves.flatMap(dreItensDoNo);
+  return n.l2s.flatMap(dreItensDoNo);
+}
+
+function renderizarAnalitico(){
+  const sub = document.getElementById('dre-anal-sub');
+  const tbody = document.getElementById('dre-anal-tbody');
+  const tfoot = document.getElementById('dre-anal-tfoot');
+  if(!sub) return;
+  const node = (dreAnalSel && dreModelo) ? dreNoPorPath(dreAnalSel) : null;
+  if(!node){
+    sub.textContent = 'Clique numa linha da tabela ou numa barra/ponto dos gráficos pra ver os lançamentos.';
+    tbody.innerHTML = ''; tfoot.innerHTML = '';
+    return;
+  }
+  const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const fmtV = v => { const a = Math.abs(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); return v < 0 ? '(' + a + ')' : a; };
+  const sufAno = '/' + String(DRE_ANO).slice(2);
+  const itens = dreItensDoNo(node)
+    .filter(it => dreAnalSel.mes === null ? it.m <= dreModelo.mesIdx : it.m === dreAnalSel.mes)
+    .sort((a, b) => b.dt.localeCompare(a.dt));
+  const nome = [dreModelo.l1s.find(x => x.fluxo === dreAnalSel.fluxo).desc, dreAnalSel.l2, dreAnalSel.leaf].filter(Boolean).join(' › ');
+  const periodo = dreAnalSel.mes === null ? 'YTD até ' + NOMES_MES_CURTO[dreModelo.mesIdx] + sufAno : NOMES_MES_CURTO[dreAnalSel.mes] + sufAno;
+  sub.textContent = nome + ' — ' + periodo + ' · ' + itens.length + ' lançamento' + (itens.length === 1 ? '' : 's');
+  tbody.innerHTML = itens.length ? itens.map(it => `<tr>
+    <td>${new Date(it.dt).toLocaleDateString('pt-BR')}</td>
+    <td>${esc(it.cat)}</td>
+    <td>${fmtV(it.valor)}</td>
+    <td>${esc(it.obs)}</td>
+  </tr>`).join('') : '<tr><td colspan="4" style="text-align:center;color:var(--muted);">Sem lançamentos.</td></tr>';
+  const total = itens.reduce((sum, it) => sum + it.valor, 0);
+  tfoot.innerHTML = `<tr><td colspan="2">Total</td><td style="text-align:right;">${fmtV(total)}</td><td></td></tr>`;
 }
 
 // ---------- Análise (gráficos Orçado x Realizado por mês) ----------
@@ -2438,6 +2531,26 @@ function onDreChartGrupoChange(){
   if(subs.some(s => s.desc === anterior)) subSel.value = anterior;
   atualizarGraficosDre();
 }
+
+const fmtLblDre = (v, ctx) => {
+  if(v === null || v === undefined) return '';
+  const largo = ctx && ctx.chart && ctx.chart.width >= 700;
+  if(largo || Math.abs(v) < 1000) return fmtDre(v);
+  return Math.abs(v) >= 10000 ? Math.round(v / 1000) + 'k' : (v / 1000).toFixed(1).replace('.', ',') + 'k';
+};
+
+// Posição do rótulo no acumulado: a série mais alta no mês leva o rótulo pra cima,
+// a mais baixa leva pra baixo — evita rótulos sobrepostos quando os valores estão próximos.
+const alignAcumDre = qual => ctx => {
+  const ds = ctx.chart.data.datasets;
+  const i = ctx.dataIndex;
+  const o = ds[0].data[i];
+  const rv = ds[1].data[i];
+  const r = (rv !== null && rv !== undefined) ? rv : ds[2].data[i];
+  if(o === null || o === undefined || r === null || r === undefined) return qual === 'orc' ? 'bottom' : 'top';
+  const orcAcima = o >= r;
+  return qual === 'orc' ? (orcAcima ? 'top' : 'bottom') : (orcAcima ? 'bottom' : 'top');
+};
 
 function atualizarGraficosDre(){
   if(!dreModelo) return;
@@ -2482,10 +2595,12 @@ function atualizarGraficosDre(){
   const corOrcado = '#808080';
   const corRealizado = '#E8622C';
 
+  const maxBarras = Math.max(0, ...orcadoMeses, ...realizadoMeses.filter(v => v !== null));
   if(dreChartBarras){
     dreChartBarras.data.labels = labels;
     dreChartBarras.data.datasets[0].data = orcadoMeses;
     dreChartBarras.data.datasets[1].data = realizadoMeses;
+    dreChartBarras.options.scales.y.suggestedMax = maxBarras * 1.18;
     dreChartBarras.update();
   } else {
     const ctx = document.getElementById('dre-chart-barras').getContext('2d');
@@ -2501,14 +2616,16 @@ function atualizarGraficosDre(){
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        layout: { padding: { top: 34 } },
+        layout: { padding: { top: 22 } },
+        interaction: { mode: 'index', intersect: false },
+        onClick: (e, els) => cliqueGraficoDre(els),
         scales: {
           x: { ticks: { color: '#9A9AA0', font: { size: 10 } }, grid: { display: false } },
-          y: { ticks: { color: '#9A9AA0', font: { size: 9 }, callback: v => fmtDre(v) }, grid: { color: '#2A2A2E' } }
+          y: { suggestedMax: maxBarras * 1.18, ticks: { color: '#9A9AA0', font: { size: 9 }, callback: v => fmtDre(v) }, grid: { color: '#2A2A2E' } }
         },
         plugins: {
           legend: { labels: { color: '#F2F0EC', font: { size: 10.5 } } },
-          datalabels: { color: '#F2F0EC', anchor: 'end', align: 'end', rotation: -90, clip: false, font: { size: 8, weight: '600' }, formatter: v => (v === null || v === undefined) ? '' : fmtDre(v) }
+          datalabels: { color: '#F2F0EC', anchor: 'end', align: 'end', clip: false, font: { size: 8, weight: '600' }, formatter: fmtLblDre }
         }
       },
       plugins: (typeof ChartDataLabels !== 'undefined') ? [ChartDataLabels] : []
@@ -2536,11 +2653,16 @@ function atualizarGraficosDre(){
     }
   }
 
+  const todosAcum = [...orcadoAcumulado, ...realizadoAcumulado, ...projetadoAcumulado].filter(v => v !== null);
+  const yMaxAcum = Math.max(0, ...todosAcum);
+  const yMinAcum = Math.min(0, ...todosAcum);
   if(dreChartAcumulado){
     dreChartAcumulado.data.labels = labels;
     dreChartAcumulado.data.datasets[0].data = orcadoAcumulado;
     dreChartAcumulado.data.datasets[1].data = realizadoAcumulado;
     dreChartAcumulado.data.datasets[2].data = projetadoAcumulado;
+    dreChartAcumulado.options.scales.y.suggestedMax = yMaxAcum + 0.14 * Math.abs(yMaxAcum);
+    dreChartAcumulado.options.scales.y.suggestedMin = Math.min(0, yMinAcum) - 0.1 * Math.abs(yMaxAcum);
     dreChartAcumulado.update();
   } else {
     const ctxA = document.getElementById('dre-chart-acumulado').getContext('2d');
@@ -2559,7 +2681,7 @@ function atualizarGraficosDre(){
             tension: 0.25,
             pointRadius: 2,
             pointBackgroundColor: corOrcado,
-            datalabels: { color: '#B5B5BA', anchor: 'end', align: 'bottom', offset: 2, formatter: fmtLbl }
+            datalabels: { color: '#B5B5BA', anchor: 'end', align: alignAcumDre('orc'), offset: 3, formatter: fmtLbl }
           },
           {
             label: 'Realizado',
@@ -2570,7 +2692,7 @@ function atualizarGraficosDre(){
             tension: 0.25,
             pointRadius: 3,
             pointBackgroundColor: corRealizado,
-            datalabels: { color: '#F2A37A', anchor: 'end', align: 'top', offset: 2, formatter: fmtLbl }
+            datalabels: { color: '#F2A37A', anchor: 'end', align: alignAcumDre('real'), offset: 3, formatter: fmtLbl }
           },
           {
             label: 'Projetado',
@@ -2582,17 +2704,19 @@ function atualizarGraficosDre(){
             tension: 0.25,
             pointRadius: 2,
             pointBackgroundColor: corRealizado,
-            datalabels: { color: '#F2A37A', anchor: 'end', align: 'top', offset: 2, formatter: (v, ctx) => ctx.dataIndex <= dreModelo.mesIdx ? '' : fmtLbl(v) }
+            datalabels: { color: '#F2A37A', anchor: 'end', align: alignAcumDre('real'), offset: 3, formatter: (v, ctx) => ctx.dataIndex <= dreModelo.mesIdx ? '' : fmtLbl(v) }
           }
         ]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        layout: { padding: { top: 18, right: 14 } },
+        layout: { padding: { top: 18, right: 14, left: 6 } },
+        interaction: { mode: 'index', intersect: false },
+        onClick: (e, els) => cliqueGraficoDre(els),
         scales: {
           x: { ticks: { color: '#9A9AA0', font: { size: 10 } }, grid: { display: false } },
-          y: { ticks: { color: '#9A9AA0', font: { size: 9 }, callback: v => fmtDre(v) }, grid: { color: '#2A2A2E' } }
+          y: { suggestedMax: yMaxAcum + 0.14 * Math.abs(yMaxAcum), suggestedMin: Math.min(0, yMinAcum) - 0.1 * Math.abs(yMaxAcum), ticks: { color: '#9A9AA0', font: { size: 9 }, callback: v => fmtDre(v) }, grid: { color: '#2A2A2E' } }
         },
         plugins: {
           legend: { labels: { color: '#F2F0EC', font: { size: 10.5 } } },
