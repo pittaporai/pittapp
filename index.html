@@ -96,16 +96,17 @@
   .casa-table th:nth-child(4){background:#000;}
   .casa-table td:nth-child(4){background:#000;text-align:center;font-weight:600;}
   /* Nível 1 — Receitas/Despesas: cinza mais forte, cabeçalho de grupo */
-  .dre-row-l1{background:#808080;color:#fff;font-weight:700;cursor:pointer;}
-  .dre-row-l1 td:nth-child(4){background:#F1A983;color:#fff;}
-  .dre-row-l1 td:nth-child(5){background:#A6C9EC;color:#fff;}
+  .dre-row-l1{background:#000;color:#fff;font-weight:700;cursor:pointer;}
+  .dre-row-l1 td:nth-child(4){background:#E97132;color:#fff;}
+  .dre-row-l1 td:nth-child(5){background:#215C98;color:#fff;}
   .dre-row-l1 td:first-child::before{color:#fff !important;}
   .dre-row-l1 td:first-child::before{content:'▸ ';display:inline-block;color:var(--muted);font-size:10px;transition:transform .15s;}
   .dre-row-l1.fechado td:first-child::before{content:'▾ ';}
   /* Nível 2 — grupos (Empreendedorismo, Outros, Receitas...): cinza intermediário, com linha sutil separando do próximo */
-  .dre-row-l2{background:#1E1E21;font-weight:700;color:var(--gray2);cursor:pointer;}
-  .dre-row-l2 td:nth-child(4){background:rgba(233,113,50,0.22);color:#F2A37A;}
-  .dre-row-l2 td:nth-child(5){background:rgba(33,92,152,0.38);color:#A6C9EC;}
+  .dre-row-l2{background:#808080;font-weight:700;color:#fff;cursor:pointer;}
+  .dre-row-l2 td:nth-child(4){background:#F1A983;color:#fff;}
+  .dre-row-l2 td:nth-child(5){background:#A6C9EC;color:#fff;}
+  .dre-row-l2 td:first-child::before{color:#fff !important;}
   .dre-row-l2 td:first-child::before{content:'▸ ';display:inline-block;color:var(--muted);font-size:10px;}
   .dre-row-l2.fechado td:first-child::before{content:'▾ ';}
   /* Nível 3 — itens (Salário, Benefício...): sem fundo de grupo, indentado, com linha sutil separando do próximo */
