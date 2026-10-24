@@ -597,12 +597,15 @@
       <div class="lf-row">
         <div class="field">
           <label>Categoria</label>
-          <select id="dre-categoria" onchange="atualizarGraficosDre()">
-            <option value="">Todos</option>
+          <select id="dre-categoria" onchange="recalcularDre()">
             <option value="Matheus">Matheus</option>
-            <option value="Michelle">Michelle</option>
             <option value="Casa">Casa</option>
+            <option value="Todos">Todos</option>
           </select>
+        </div>
+        <div class="field">
+          <label>Mês (YTD até)</label>
+          <select id="dre-mes" onchange="recalcularDre()"></select>
         </div>
       </div>
 
@@ -624,7 +627,7 @@
             <tr>
               <th>Descrição</th>
               <th>Orçado</th>
-              <th>YTD</th>
+              <th id="dre-th-ytd">YTD</th>
               <th>Realizado</th>
               <th style="color:#7A3B4A;">Δ</th>
             </tr>
@@ -641,7 +644,7 @@
           </tfoot>
         </table>
       </div>
-      <p class="r-hint">Toque em Receitas/Despesas ou num grupo pra abrir os detalhes. Valores importados do orçamento — Realizado ainda é um retrato do arquivo, não ao vivo.</p>
+      <p class="r-hint" id="dre-hint"></p>
 
       <p class="chart-titulo laranja" style="margin-top:28px;">Orçado x Realizado por mês</p>
       <div class="lf-row">
@@ -1364,7 +1367,7 @@ function irParaView(nome){
   if(nome === 'resumo' && !patrimonioMichelleCarregado){
     carregarPatrimonioMichelle();
   }
-  if(nome === 'dre' && !dreCarregado){
+  if(nome === 'dre'){
     carregarDRE();
   }
   if(nome === 'casa' && !casaCarregado){
@@ -2116,40 +2119,221 @@ function setaDelta(delta){
   return `<span style="color:${cor};font-size:10px;margin-right:4px;">${glifo}</span>`;
 }
 
+const NOMES_MES_CURTO = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+const DRE_ANO = 2026;
+const DRE_EXCLUIR_GRUPOS = ['Investimentos', 'Entre Contas', 'Dívida/Sem Impacto'];
+let dreOrcLinhas = [];
+let dreLancs = [];
+let dreModelo = null;
+let dreMesSel = 0;
+
+const dreSoma = (arr, ate) => { let s = 0; for(let i = 0; i <= ate && i < arr.length; i++) s += arr[i]; return s; };
+const dreSomaArr = (a, b) => a.map((v, i) => v + b[i]);
+const dreChave = (f, g, n) => f + '|' + g + '|' + n;
+
 function celulasDre(r){
-  const delta = r.realizado - r.orcado_ytd;
-  return `<td>${fmtDre(r.orcado)}</td><td>${fmtDre(r.orcado_ytd)}</td><td>${fmtDre(r.realizado)}</td><td style="color:var(--text);white-space:nowrap;">${setaDelta(delta)}${fmtDre(delta)}</td>`;
+  const delta = r.realYtd - r.orcYtd;
+  return `<td>${fmtDre(r.orcAno)}</td><td>${fmtDre(r.orcYtd)}</td><td>${fmtDre(r.realYtd)}</td><td style="color:var(--text);white-space:nowrap;">${setaDelta(delta)}${fmtDre(delta)}</td>`;
+}
+
+function dreMesFechadoIdx(){
+  const [a, m] = mesFechadoCasa().split('-').map(Number);
+  if(a < DRE_ANO) return -1;
+  if(a > DRE_ANO) return 11;
+  return m - 1;
+}
+
+function dreLeavesDe(escopo){
+  const rows = dreOrcLinhas.filter(r => r.escopo === escopo);
+  return rows.filter(r => r.nivel === 3 && r.meses).map(r => {
+    const pai = rows.find(p => p.codigo === r.codigo_pai);
+    const lancSaida = r.regra === 'michelle_custo' || r.regra === 'michelle_zero';
+    return {
+      codigo: r.codigo, fluxo: r.fluxo, fluxoLanc: lancSaida ? 'saida' : r.fluxo,
+      l2: pai ? pai.descricao : 'Outros', desc: r.descricao, regra: r.regra,
+      grupo: r.grupo_app, cats: r.categorias_app || [],
+      orc: r.meses.map(Number), real: Array(12).fill(0)
+    };
+  });
+}
+
+function prepararLancDre(raw, cotMensais, config){
+  const out = [];
+  raw.forEach(l => {
+    const cat = l.categorias;
+    if(!cat || DRE_EXCLUIR_GRUPOS.includes(cat.grupo)) return;
+    const ch = chaveMesReal(l.data_hora);
+    const [a, m] = ch.split('-').map(Number);
+    if(a !== DRE_ANO) return;
+    const brl = Number(l.valor) * taxaCasaMes(l.moeda || 'BRL', ch, cotMensais, config);
+    out.push({ m: m - 1, d: l.dono, f: l.fluxo, g: cat.grupo, n: cat.nome, s: l.fluxo === 'entrada' ? brl : -brl });
+  });
+  return out;
+}
+
+function dreMontarModelo(view, mesIdx){
+  const Lmat = dreLeavesDe('matheus');
+  const Lcasa = dreLeavesDe('casa');
+  let leaves;
+  if(view === 'Matheus') leaves = Lmat;
+  else if(view === 'Casa') leaves = Lcasa;
+  else leaves = [...Lmat.filter(l => l.regra === 'dono_matheus'), ...Lcasa.filter(l => l.regra !== 'casa_matheus_rec')];
+
+  const dm = {}, cp = {}, cm = {}, mrec = {}, mi = {};
+  const reg = (map, leaf) => leaf.cats.forEach(c => { map[dreChave(leaf.fluxoLanc, leaf.grupo, c)] = leaf; });
+  leaves.forEach(l => {
+    if(l.regra === 'dono_matheus') reg(dm, l);
+    else if(l.regra === 'casa_pond') reg(cp, l);
+    else if(l.regra === 'casa') reg(cm, l);
+    else if(l.regra === 'casa_matheus_rec') reg(mrec, l);
+    else reg(mi, l);
+  });
+
+  const pctMes = m => {
+    const ch = DRE_ANO + '-' + String(m + 1).padStart(2, '0');
+    const r = (casaMeses || []).find(x => x.chave === ch);
+    return r ? r.pctMatheus : 0;
+  };
+
+  const extras = {};
+  const extraLeaf = (f, g, n) => {
+    const k = dreChave(f, g, n);
+    if(!extras[k]) extras[k] = { codigo: 'x:' + k, fluxo: f, fluxoLanc: f, l2: g, desc: n, regra: 'extra', grupo: g, cats: [n], orc: Array(12).fill(0), real: Array(12).fill(0), extra: true };
+    return extras[k];
+  };
+
+  dreLancs.forEach(l => {
+    if(l.m > mesIdx) return;
+    const k = dreChave(l.f, l.g, l.n);
+    let leaf = null, w = 1;
+    if(view === 'Matheus'){
+      if(l.d === 'Michelle') return;
+      if(l.d === 'Matheus') leaf = dm[k];
+      else { leaf = cp[k] || dm[k]; w = pctMes(l.m); }
+    } else if(view === 'Casa'){
+      if(l.d === 'Casa') leaf = cm[k];
+      else if(l.d === 'Matheus'){ if(l.f !== 'entrada') return; leaf = mrec[k]; if(!leaf) return; }
+      else { leaf = mi[k]; if(!leaf) return; }
+    } else {
+      if(l.d === 'Casa') leaf = cm[k] || dm[k];
+      else if(l.d === 'Michelle') leaf = mi[k] || dm[k];
+      else leaf = dm[k];
+    }
+    if(!leaf) leaf = extraLeaf(l.f, l.g, l.n);
+    leaf.real[l.m] += l.s * w;
+  });
+
+  const l1s = [
+    { fluxo: 'entrada', desc: 'Receitas', l2s: [] },
+    { fluxo: 'saida', desc: 'Despesas', l2s: [] }
+  ];
+  [...leaves, ...Object.values(extras)].forEach(leaf => {
+    const l1 = l1s.find(x => x.fluxo === leaf.fluxo);
+    let l2 = l1.l2s.find(x => x.desc === leaf.l2);
+    if(!l2){ l2 = { desc: leaf.l2, leaves: [] }; l1.l2s.push(l2); }
+    l2.leaves.push(leaf);
+  });
+
+  const fechar = n => {
+    n.orcAno = dreSoma(n.orc, 11);
+    n.orcYtd = dreSoma(n.orc, mesIdx);
+    n.realYtd = dreSoma(n.real, mesIdx);
+  };
+  l1s.forEach(l1 => {
+    l1.orc = Array(12).fill(0); l1.real = Array(12).fill(0);
+    l1.l2s.forEach(l2 => {
+      l2.orc = Array(12).fill(0); l2.real = Array(12).fill(0);
+      l2.leaves.forEach(lf => { fechar(lf); l2.orc = dreSomaArr(l2.orc, lf.orc); l2.real = dreSomaArr(l2.real, lf.real); });
+      l2.leaves = l2.leaves.filter(lf => Math.abs(lf.orcAno) > 0.005 || Math.abs(lf.realYtd) > 0.005);
+      fechar(l2);
+      l1.orc = dreSomaArr(l1.orc, l2.orc); l1.real = dreSomaArr(l1.real, l2.real);
+    });
+    l1.l2s = l1.l2s.filter(l2 => l2.leaves.length > 0);
+    fechar(l1);
+  });
+  return { l1s, mesIdx, view };
 }
 
 async function carregarDRE(){
   const tbody = document.getElementById('dre-tbody');
-  tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Carregando...</td></tr>';
+  if(!dreCarregado) tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Carregando...</td></tr>';
 
-  const { data, error } = await sb.from('orcamento_dre').select('*').eq('ano', 2026).order('codigo');
-
+  const { data: orc, error } = await sb.from('orcamento_linhas').select('*').eq('ano', DRE_ANO).order('ordem');
   if(error){
     tbody.innerHTML = '<tr><td colspan="5" style="color:var(--red);">Erro: ' + error.message + '</td></tr>';
     return;
   }
+  dreOrcLinhas = orc || [];
 
-  const resultado = data.find(r => r.nivel === 4);
-  if(resultado){
-    document.getElementById('dre-res-orcado').textContent = fmtDre(resultado.orcado);
-    document.getElementById('dre-res-orcado-ytd').textContent = fmtDre(resultado.orcado_ytd);
-    document.getElementById('dre-res-realizado').textContent = fmtDre(resultado.realizado);
-    const deltaRes = resultado.realizado - resultado.orcado_ytd;
-    const deltaEl = document.getElementById('dre-res-delta');
-    deltaEl.innerHTML = setaDelta(deltaRes) + fmtDre(deltaRes);
-    deltaEl.style.color = 'var(--text)';
+  if(!casaMeses) await carregarCasa();
+
+  const [cotRes, cfgRes] = await Promise.all([
+    sb.from('cotacoes_mensais').select('moeda, ano, mes, taxa_media'),
+    sb.from('config').select('chave, valor')
+  ]);
+
+  let raw = [];
+  const PAGE = 1000;
+  for(let from = 0; ; from += PAGE){
+    const { data: pagina, error: ep } = await sb.from('lancamentos')
+      .select('fluxo, valor, moeda, data_hora, dono, categorias(nome, grupo)')
+      .gte('data_hora', DRE_ANO + '-01-01T00:00:00')
+      .lt('data_hora', (DRE_ANO + 1) + '-01-01T00:00:00')
+      .order('id')
+      .range(from, from + PAGE - 1);
+    if(ep){
+      tbody.innerHTML = '<tr><td colspan="5" style="color:var(--red);">Erro: ' + ep.message + '</td></tr>';
+      return;
+    }
+    raw = raw.concat(pagina);
+    if(pagina.length < PAGE) break;
+  }
+  dreLancs = prepararLancDre(raw, cotRes.data || [], cfgRes.data || []);
+
+  // Seletor de mês: só meses já fechados (o mês corrente fica de fora).
+  const idxFechado = dreMesFechadoIdx();
+  const mesSel = document.getElementById('dre-mes');
+  const anterior = mesSel.value;
+  let opts = '';
+  for(let i = 0; i <= idxFechado; i++) opts += `<option value="${i}">${NOMES_MES_CURTO[i]}/${String(DRE_ANO).slice(2)}</option>`;
+  mesSel.innerHTML = opts;
+  mesSel.value = (dreCarregado && anterior !== '' && Number(anterior) <= idxFechado) ? anterior : String(Math.max(idxFechado, 0));
+
+  dreCarregado = true;
+  recalcularDre();
+}
+
+function recalcularDre(){
+  const mesSel = document.getElementById('dre-mes');
+  dreMesSel = Number(mesSel.value || 0);
+  const view = document.getElementById('dre-categoria').value || 'Matheus';
+  dreModelo = dreMontarModelo(view, dreMesSel);
+
+  const thYtd = document.getElementById('dre-th-ytd');
+  if(thYtd) thYtd.textContent = 'YTD ' + NOMES_MES_CURTO[dreMesSel];
+
+  const orcRes = dreModelo.l1s.reduce((s, l) => s + l.orcAno, 0);
+  const ytdRes = dreModelo.l1s.reduce((s, l) => s + l.orcYtd, 0);
+  const realRes = dreModelo.l1s.reduce((s, l) => s + l.realYtd, 0);
+  document.getElementById('dre-res-orcado').textContent = fmtDre(orcRes);
+  document.getElementById('dre-res-orcado-ytd').textContent = fmtDre(ytdRes);
+  document.getElementById('dre-res-realizado').textContent = fmtDre(realRes);
+  const deltaEl = document.getElementById('dre-res-delta');
+  deltaEl.innerHTML = setaDelta(realRes - ytdRes) + fmtDre(realRes - ytdRes);
+  deltaEl.style.color = 'var(--text)';
+
+  const hint = document.getElementById('dre-hint');
+  if(hint){
+    const base = 'Toque em Receitas/Despesas ou num grupo pra abrir os detalhes. Realizado ao vivo dos lançamentos, só meses fechados (YTD até ' + NOMES_MES_CURTO[dreMesSel] + '/' + String(DRE_ANO).slice(2) + ').';
+    hint.textContent = view === 'Matheus'
+      ? base + ' Despesas da Casa entram ponderadas pelo % do Rateio Casa de cada mês.'
+      : view === 'Casa'
+        ? base + ' Visão da Casa sem ponderação, com as receitas de cada um.'
+        : base + ' Todos = soma de tudo, sem ponderação.';
   }
 
-  dreL1s = data.filter(r => r.nivel === 1);
-  dreL2s = data.filter(r => r.nivel === 2);
-  dreL3s = data.filter(r => r.nivel === 3);
-
   renderizarTabelaDre();
-  dreCarregado = true;
-
   popularFiltrosDreChart();
 }
 
@@ -2163,29 +2347,29 @@ function toggleDreOrdenacao(){
 
 function renderizarTabelaDre(){
   const tbody = document.getElementById('dre-tbody');
-  const nomeL1 = { entrada: 'Receitas', saida: 'Despesas' };
+  if(!dreModelo){ tbody.innerHTML = ''; return; }
+  const porDelta = (a, b) => (b.realYtd - b.orcYtd) - (a.realYtd - a.orcYtd);
 
   let html = '';
-  dreL1s.forEach((r1, i) => {
+  dreModelo.l1s.forEach((r1, i) => {
     html += `<tr class="dre-row-l1" id="dre-tr-l1-${i}" onclick="toggleDreL1(${i})">
-      <td>${nomeL1[r1.fluxo] || r1.descricao}</td>
+      <td>${r1.desc}</td>
       ${celulasDre(r1)}
     </tr>`;
 
-    let filhos2 = dreL2s.filter(r => r.codigo_pai === r1.codigo);
-    if(dreOrdenarPorDelta){
-      filhos2 = [...filhos2].sort((a, b) => (b.realizado - b.orcado_ytd) - (a.realizado - a.orcado_ytd));
-    }
+    let filhos2 = r1.l2s;
+    if(dreOrdenarPorDelta) filhos2 = [...filhos2].sort(porDelta);
     filhos2.forEach((r2, j) => {
       html += `<tr class="dre-row-l2 dre-hide dre-l2-de-${i}" id="dre-tr-l2-${i}-${j}" onclick="toggleDreL2(${i}, ${j})">
-        <td>${r2.descricao}</td>
+        <td>${r2.desc}</td>
         ${celulasDre(r2)}
       </tr>`;
 
-      const filhos3 = dreL3s.filter(r => r.codigo_pai === r2.codigo);
+      let filhos3 = r2.leaves;
+      if(dreOrdenarPorDelta) filhos3 = [...filhos3].sort(porDelta);
       filhos3.forEach(r3 => {
         html += `<tr class="dre-row-l3 dre-hide dre-l3-de-${i}-${j}">
-          <td>${r3.descricao}</td>
+          <td>${r3.desc}</td>
           ${celulasDre(r3)}
         </tr>`;
       });
@@ -2213,94 +2397,63 @@ function toggleDreL2(i, j){
 
 // ---------- Análise (gráficos Orçado x Realizado por mês) ----------
 
-const NOMES_MES_CURTO = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-
 function popularFiltrosDreChart(){
   const fluxoSel = document.getElementById('dre-chart-fluxo');
-  if(!fluxoSel) return;
+  if(!fluxoSel || !dreModelo) return;
   onDreChartFluxoChange();
 }
 
 function onDreChartFluxoChange(){
   const fluxo = document.getElementById('dre-chart-fluxo').value;
   const grupoSel = document.getElementById('dre-chart-grupo');
-  const l1 = dreL1s.find(r => r.fluxo === fluxo);
-  const grupos = l1 ? dreL2s.filter(r => r.codigo_pai === l1.codigo) : [];
-  grupoSel.innerHTML = grupos.map(g => `<option value="${g.codigo}">${g.descricao}</option>`).join('');
+  const anterior = grupoSel.value;
+  const l1 = dreModelo.l1s.find(r => r.fluxo === fluxo);
+  const grupos = l1 ? l1.l2s : [];
+  grupoSel.innerHTML = grupos.map(g => `<option value="${g.desc}">${g.desc}</option>`).join('');
+  if(grupos.some(g => g.desc === anterior)) grupoSel.value = anterior;
   onDreChartGrupoChange();
 }
 
 function onDreChartGrupoChange(){
-  const grupoCodigo = document.getElementById('dre-chart-grupo').value;
+  const fluxo = document.getElementById('dre-chart-fluxo').value;
+  const grupoDesc = document.getElementById('dre-chart-grupo').value;
   const subSel = document.getElementById('dre-chart-subgrupo');
-  const subs = dreL3s.filter(r => r.codigo_pai === grupoCodigo);
-  subSel.innerHTML = '<option value="">Todos (grupo inteiro)</option>' + subs.map(s => `<option value="${s.codigo}">${s.descricao}</option>`).join('');
+  const anterior = subSel.value;
+  const l1 = dreModelo.l1s.find(r => r.fluxo === fluxo);
+  const g = l1 ? l1.l2s.find(x => x.desc === grupoDesc) : null;
+  const subs = g ? g.leaves : [];
+  subSel.innerHTML = '<option value="">Todos (grupo inteiro)</option>' + subs.map(s => `<option value="${s.desc}">${s.desc}</option>`).join('');
+  if(subs.some(s => s.desc === anterior)) subSel.value = anterior;
   atualizarGraficosDre();
 }
 
-async function garantirLancamentos2026(){
-  if(dreLancamentos2026) return dreLancamentos2026;
-  const { data, error } = await sb.from('lancamentos')
-    .select('valor, fluxo, data_hora, dono, categorias(nome, grupo)')
-    .gte('data_hora', '2026-01-01T00:00:00')
-    .lt('data_hora', '2027-01-01T00:00:00');
-  dreLancamentos2026 = error ? [] : data;
-  return dreLancamentos2026;
-}
-
-function realizadoMensal(lancamentos, fluxo, grupoDescricao, subgrupoDescricao, categoria){
-  const meses = Array(12).fill(0);
-  lancamentos.forEach(l => {
-    if(l.fluxo !== fluxo) return;
-    if(categoria && l.dono !== categoria) return;
-    const cat = l.categorias;
-    if(!cat || cat.grupo !== grupoDescricao) return;
-    if(subgrupoDescricao && cat.nome !== subgrupoDescricao) return;
-    const mes = new Date(l.data_hora).getMonth();
-    meses[mes] += Number(l.valor);
-  });
-  // Despesa: valores sempre negativos no gráfico, orçado e realizado do mesmo
-  // lado do zero (senão as barras ficam em lados opostos e fica confuso comparar).
-  return fluxo === 'saida' ? meses.map(v => -v) : meses;
-}
-
-async function atualizarGraficosDre(){
+function atualizarGraficosDre(){
+  if(!dreModelo) return;
   const hintEl = document.getElementById('dre-chart-hint');
   const fluxo = document.getElementById('dre-chart-fluxo').value;
-  const grupoCodigo = document.getElementById('dre-chart-grupo').value;
-  const subCodigo = document.getElementById('dre-chart-subgrupo').value;
+  const grupoDesc = document.getElementById('dre-chart-grupo').value;
+  const subDesc = document.getElementById('dre-chart-subgrupo').value;
 
-  const grupo = dreL2s.find(g => g.codigo === grupoCodigo);
-  const sub = subCodigo ? dreL3s.find(s => s.codigo === subCodigo) : null;
-  if(!grupo){ return; }
+  const l1 = dreModelo.l1s.find(r => r.fluxo === fluxo);
+  const grupo = l1 ? l1.l2s.find(g => g.desc === grupoDesc) : null;
+  if(!grupo) return;
+  const sub = subDesc ? grupo.leaves.find(s => s.desc === subDesc) : null;
+  const node = sub || grupo;
+  const mesSel = dreModelo.mesIdx;
 
-  const categoria = document.getElementById('dre-categoria') ? document.getElementById('dre-categoria').value : '';
+  const orcadoMeses = node.orc;
+  const realizadoMeses = node.real.map((v, i) => i <= mesSel ? v : null);
 
-  const orcadoAnual = sub ? sub.orcado : grupo.orcado;
-  const orcadoMensal = orcadoAnual / 12;
-  // orcamento_dre já guarda despesa com valor negativo (e receita positivo) —
-  // não inverter de novo aqui, senão o orçado fica do lado oposto do realizado.
-  const orcadoMeses = Array(12).fill(orcadoMensal);
-
-  const lancamentos = await garantirLancamentos2026();
-  const grupoDescricao = grupo.descricao;
-  const subDescricao = sub ? sub.descricao : null;
-  const realizadoMeses = realizadoMensal(lancamentos, fluxo, grupoDescricao, subDescricao, categoria);
-
-  // Cards de resumo (Orçado ano / YTD / Realizado / Delta) da seleção atual —
-  // orçado e YTD ainda não são quebrados por categoria (só o Realizado filtra).
-  const orcadoYtd = sub ? sub.orcado_ytd : grupo.orcado_ytd;
-  const realizadoTotalAno = realizadoMeses.reduce((s, v) => s + v, 0);
-  const deltaCards = realizadoTotalAno - orcadoYtd;
+  const delta = node.realYtd - node.orcYtd;
   const cardOrcadoEl = document.getElementById('dre-card-orcado');
   const cardYtdEl = document.getElementById('dre-card-ytd');
   const cardRealizadoEl = document.getElementById('dre-card-realizado');
   const cardDeltaEl = document.getElementById('dre-card-delta');
-  if(cardOrcadoEl) cardOrcadoEl.textContent = fmtDre(orcadoAnual);
-  if(cardYtdEl) cardYtdEl.textContent = fmtDre(orcadoYtd);
-  if(cardRealizadoEl) cardRealizadoEl.textContent = fmtDre(realizadoTotalAno);
+  if(cardOrcadoEl) cardOrcadoEl.textContent = fmtDre(node.orcAno);
+  if(cardYtdEl) cardYtdEl.textContent = fmtDre(node.orcYtd);
+  if(cardRealizadoEl) cardRealizadoEl.textContent = fmtDre(node.realYtd);
   if(cardDeltaEl){
-    cardDeltaEl.innerHTML = setaDelta(deltaCards) + fmtDre(deltaCards);
+    cardDeltaEl.innerHTML = setaDelta(delta) + fmtDre(delta);
     cardDeltaEl.style.color = 'var(--text)';
   }
 
@@ -2345,16 +2498,13 @@ async function atualizarGraficosDre(){
     });
   }
 
-  // Acumulado: orçado (área cinza) x realizado (linha laranja) — só até o mês
-  // atual, já que meses futuros ainda não têm realizado.
-  const hoje = new Date();
-  const mesAtual = (hoje.getFullYear() === 2026) ? hoje.getMonth() : 11;
-  const labelsAcum = labels.slice(0, mesAtual + 1);
+  // Acumulado: só até o mês fechado selecionado.
+  const labelsAcum = labels.slice(0, mesSel + 1);
   let accOrcado = 0, accRealizado = 0;
   const orcadoAcumulado = [], realizadoAcumulado = [];
-  for(let i = 0; i <= mesAtual; i++){
+  for(let i = 0; i <= mesSel; i++){
     accOrcado += orcadoMeses[i];
-    accRealizado += realizadoMeses[i];
+    accRealizado += node.real[i];
     orcadoAcumulado.push(accOrcado);
     realizadoAcumulado.push(accRealizado);
   }
@@ -2409,9 +2559,7 @@ async function atualizarGraficosDre(){
   }
 
   if(hintEl){
-    hintEl.textContent = grupoDescricao.startsWith('Casa -')
-      ? 'Obs.: para grupos "Casa", o Realizado mensal ainda é aproximado — vamos refinar isso junto com o Acerto de Contas.'
-      : 'Orçado mensal = orçado anual ÷ 12 (referência linear).';
+    hintEl.textContent = 'Orçado mensal conforme a planilha de orçamento; realizado até ' + NOMES_MES_CURTO[mesSel] + '/' + String(DRE_ANO).slice(2) + ' (mês fechado).';
   }
 }
 
