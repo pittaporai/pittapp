@@ -87,35 +87,40 @@
   .casa-table col.col-num{width:28%;}
   .casa-table col.col-pessoa{width:26%;}
   /* Realizado (col 4) e Δ (col 5): tons de laranja escalando com o nível da linha (mesma família de cor, sem amarelo) */
-  .dre-table th:nth-child(4){background:var(--orange-dark);color:#fff;}
-  .dre-table th:nth-child(5){background:var(--orange-pastel);color:var(--orange-pastel-text);}
-  .dre-table td:nth-child(4){background:rgba(232,98,44,0.09);font-weight:700;}
-  .dre-table td:nth-child(5){background:rgba(240,168,120,0.13);font-weight:700;}
+  .dre-table th:nth-child(4){background:#E97132;color:#fff;}
+  .dre-table th:nth-child(5){background:#215C98;color:#fff;}
+  .dre-table td:nth-child(4){background:#FBE2D5;color:#BE5014;font-weight:700;}
+  .dre-table td:nth-child(5){background:#DAE9F8;color:#215C98;font-weight:700;}
   /* Casa: só 4 colunas (Mês/Casa/Saldo/Pessoa) — a 4ª é texto (nome), não deve herdar o destaque laranja acima; as 4 colunas usam o mesmo fundo preto */
   .casa-table td{background:#000;}
   .casa-table th:nth-child(4){background:#000;}
   .casa-table td:nth-child(4){background:#000;text-align:center;font-weight:600;}
   /* Nível 1 — Receitas/Despesas: cinza mais forte, cabeçalho de grupo */
-  .dre-row-l1{background:#333338;color:#fff;font-weight:700;cursor:pointer;}
-  .dre-row-l1 td:nth-child(4){background:rgba(232,98,44,0.30);}
-  .dre-row-l1 td:nth-child(5){background:rgba(240,168,120,0.30);}
+  .dre-row-l1{background:#808080;color:#fff;font-weight:700;cursor:pointer;}
+  .dre-row-l1 td:nth-child(4){background:#F1A983;color:#fff;}
+  .dre-row-l1 td:nth-child(5){background:#A6C9EC;color:#fff;}
+  .dre-row-l1 td:first-child::before{color:#fff !important;}
   .dre-row-l1 td:first-child::before{content:'▸ ';display:inline-block;color:var(--muted);font-size:10px;transition:transform .15s;}
   .dre-row-l1.fechado td:first-child::before{content:'▾ ';}
   /* Nível 2 — grupos (Empreendedorismo, Outros, Receitas...): cinza intermediário, com linha sutil separando do próximo */
-  .dre-row-l2{background:#1E1E21;font-weight:600;color:var(--gray2);cursor:pointer;}
-  .dre-row-l2 td{border-bottom:1px solid rgba(255,255,255,.07);}
-  .dre-row-l2 td:nth-child(4){background:rgba(232,98,44,0.17);}
-  .dre-row-l2 td:nth-child(5){background:rgba(240,168,120,0.20);}
+  .dre-row-l2{background:#E8E8E8;font-weight:700;color:#808080;cursor:pointer;}
+  .dre-row-l2 td{border-bottom:1px solid rgba(0,0,0,.08);}
+  .dre-row-l2 td:nth-child(4){background:#FBE2D5;color:#BE5014;}
+  .dre-row-l2 td:nth-child(5){background:#DAE9F8;color:#215C98;}
   .dre-row-l2 td:first-child::before{content:'▸ ';display:inline-block;color:var(--muted);font-size:10px;}
   .dre-row-l2.fechado td:first-child::before{content:'▾ ';}
   /* Nível 3 — itens (Salário, Benefício...): sem fundo de grupo, indentado, com linha sutil separando do próximo */
-  .dre-row-l3{color:var(--gray2);}
-  .dre-row-l3 td{border-bottom:1px solid rgba(255,255,255,.05);}
-  .dre-row-l3 td:first-child{padding-left:14px;color:var(--muted);}
+  .dre-row-l3{background:#E8E8E8;color:#808080;}
+  .dre-row-l3 td{border-bottom:1px solid rgba(0,0,0,.06);}
+  .dre-row-l3 td:first-child{padding-left:14px;color:#808080;}
   tr.dre-hide{display:none;}
+  /* linhas brancas dividindo as células da tabela DRE */
+  .dre-table:not(.casa-table) th, .dre-table:not(.casa-table) td{border-right:1px solid #fff;border-bottom:1px solid #fff;}
+  .dre-table:not(.casa-table) th:last-child, .dre-table:not(.casa-table) td:last-child{border-right:none;}
+  .dre-row-l1 td:first-child::before, .dre-row-l2 td:first-child::before{font-size:15px !important;line-height:1;vertical-align:-1px;}
   tfoot .dre-row-resultado{background:#000;color:#fff;font-weight:700;}
-  tfoot .dre-row-resultado td:nth-child(4){background:var(--orange-dark);}
-  tfoot .dre-row-resultado td:nth-child(5){background:var(--orange-pastel);color:var(--orange-pastel-text);}
+  tfoot .dre-row-resultado td:nth-child(4){background:#E97132;color:#fff;}
+  tfoot .dre-row-resultado td:nth-child(5){background:#215C98;color:#fff;}
 
   .r-hint{font-size:11px;color:#5f5e5a;margin-top:16px;text-align:center;}
 
@@ -195,8 +200,12 @@
 
   .pos-item{background:var(--panel-2);border-radius:10px;padding:12px 14px;margin-bottom:8px;}
   .pos-item-top{display:flex;justify-content:space-between;align-items:center;}
-  .pos-ticker{font-weight:700;font-size:14px;}
-  .pos-valor-atual{font-weight:700;font-size:14px;cursor:pointer;text-decoration:underline dotted;}
+  .pos-ticker{font-weight:700;font-size:14px;color:var(--orange);}
+  .pos-valor-atual{font-weight:700;font-size:14px;cursor:pointer;text-decoration:underline dotted;color:var(--orange);}
+  .pos-grid{display:flex;justify-content:space-between;gap:10px;margin-top:8px;font-size:11.5px;color:var(--muted);}
+  .pos-col{display:flex;flex-direction:column;gap:5px;}
+  .pos-col-dir{text-align:right;}
+  .pos-col b{color:var(--gray2);font-weight:600;}
   .pos-item-sub{display:flex;justify-content:space-between;margin-top:6px;font-size:11.5px;color:var(--muted);}
   .pos-item-sub span b{color:var(--gray2);font-weight:600;}
 
@@ -591,8 +600,7 @@
 
   <div id="view-dre" class="view">
     <div class="card">
-      <h1 class="r-title">Análise</h1>
-      <p class="sub" style="text-align:center;margin-top:-14px;">DRE — Orçado x Realizado (2026)</p>
+      <h1 class="r-title">🚀 Análise</h1>
 
       <div class="lf-row">
         <div class="field">
@@ -604,14 +612,14 @@
           </select>
         </div>
         <div class="field">
-          <label>Mês (YTD até)</label>
+          <label>Mês</label>
           <select id="dre-mes" onchange="recalcularDre()"></select>
         </div>
       </div>
 
       <div class="ios-toggle" id="dre-ordenar-toggle" onclick="toggleDreOrdenacao()">
         <span class="track"></span>
-        <span>Ordenar por Delta (maior → menor)</span>
+        <span>Ordenar por Delta</span>
       </div>
 
       <div class="dre-scroll">
@@ -673,7 +681,7 @@
         <div class="destaque-sub-item"><span class="num" id="dre-card-orcado">–</span><span class="lbl">Orçado (ano)</span></div>
         <div class="destaque-sub-item"><span class="num" id="dre-card-ytd">–</span><span class="lbl">Orçado YTD</span></div>
         <div class="destaque-sub-item"><span class="num" id="dre-card-realizado" style="color:var(--orange);">–</span><span class="lbl">Realizado</span></div>
-        <div class="destaque-sub-item"><span class="num" id="dre-card-delta">–</span><span class="lbl">Δ (Real. − YTD)</span></div>
+        <div class="destaque-sub-item"><span class="num" id="dre-card-delta">–</span><span class="lbl">Δ</span></div>
       </div>
 
       <div style="position:relative;height:230px;margin-top:12px;">
@@ -1279,6 +1287,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2/dist/chartjs-plugin-datalabels.min.js"></script>
+<script>if(window.Chart){Chart.defaults.layout.padding={top:22,right:6};}</script>
 <script>
 const SUPABASE_URL = 'https://siaxiusolkminsprvdmc.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNpYXhpdXNvbGttaW5zcHJ2ZG1jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYzMDY5NjgsImV4cCI6MjEwMTg4Mjk2OH0.7zD0mM5xSjaUXYxGbsWxjerlOjpBXNteZ-IyS3eSIcg';
@@ -2134,7 +2143,7 @@ const dreChave = (f, g, n) => f + '|' + g + '|' + n;
 
 function celulasDre(r){
   const delta = r.realYtd - r.orcYtd;
-  return `<td>${fmtDre(r.orcAno)}</td><td>${fmtDre(r.orcYtd)}</td><td>${fmtDre(r.realYtd)}</td><td style="color:var(--text);white-space:nowrap;">${setaDelta(delta)}${fmtDre(delta)}</td>`;
+  return `<td>${fmtDre(r.orcAno)}</td><td>${fmtDre(r.orcYtd)}</td><td>${fmtDre(r.realYtd)}</td><td style="white-space:nowrap;">${setaDelta(delta)}${fmtDre(delta)}</td>`;
 }
 
 function dreMesFechadoIdx(){
@@ -2193,7 +2202,9 @@ function dreMontarModelo(view, mesIdx){
   const pctMes = m => {
     const ch = DRE_ANO + '-' + String(m + 1).padStart(2, '0');
     const r = (casaMeses || []).find(x => x.chave === ch);
-    return r ? r.pctMatheus : 0;
+    if(r) return r.pctMatheus;
+    const ult = (casaMeses || [])[(casaMeses || []).length - 1];
+    return ult ? ult.pctMatheus : 0;
   };
 
   const extras = {};
@@ -2204,7 +2215,6 @@ function dreMontarModelo(view, mesIdx){
   };
 
   dreLancs.forEach(l => {
-    if(l.m > mesIdx) return;
     const k = dreChave(l.f, l.g, l.n);
     let leaf = null, w = 1;
     if(view === 'Matheus'){
@@ -2321,7 +2331,6 @@ function recalcularDre(){
   document.getElementById('dre-res-realizado').textContent = fmtDre(realRes);
   const deltaEl = document.getElementById('dre-res-delta');
   deltaEl.innerHTML = setaDelta(realRes - ytdRes) + fmtDre(realRes - ytdRes);
-  deltaEl.style.color = 'var(--text)';
 
   const hint = document.getElementById('dre-hint');
   if(hint){
@@ -2345,22 +2354,30 @@ function toggleDreOrdenacao(){
   renderizarTabelaDre();
 }
 
+const dreAbertoL1 = new Set();
+const dreAbertoL2 = new Set();
+let dreOrdemL2 = {};
+
 function renderizarTabelaDre(){
   const tbody = document.getElementById('dre-tbody');
   if(!dreModelo){ tbody.innerHTML = ''; return; }
   const porDelta = (a, b) => (b.realYtd - b.orcYtd) - (a.realYtd - a.orcYtd);
+  dreOrdemL2 = {};
 
   let html = '';
   dreModelo.l1s.forEach((r1, i) => {
-    html += `<tr class="dre-row-l1" id="dre-tr-l1-${i}" onclick="toggleDreL1(${i})">
+    const aberto1 = dreAbertoL1.has(i);
+    html += `<tr class="dre-row-l1${aberto1 ? ' fechado' : ''}" onclick="toggleDreL1(${i})">
       <td>${r1.desc}</td>
       ${celulasDre(r1)}
     </tr>`;
 
     let filhos2 = r1.l2s;
     if(dreOrdenarPorDelta) filhos2 = [...filhos2].sort(porDelta);
+    dreOrdemL2[i] = filhos2.map(x => x.desc);
     filhos2.forEach((r2, j) => {
-      html += `<tr class="dre-row-l2 dre-hide dre-l2-de-${i}" id="dre-tr-l2-${i}-${j}" onclick="toggleDreL2(${i}, ${j})">
+      const aberto2 = dreAbertoL2.has(i + '|' + r2.desc);
+      html += `<tr class="dre-row-l2${aberto2 ? ' fechado' : ''}${aberto1 ? '' : ' dre-hide'}" onclick="toggleDreL2(${i}, ${j})">
         <td>${r2.desc}</td>
         ${celulasDre(r2)}
       </tr>`;
@@ -2368,7 +2385,7 @@ function renderizarTabelaDre(){
       let filhos3 = r2.leaves;
       if(dreOrdenarPorDelta) filhos3 = [...filhos3].sort(porDelta);
       filhos3.forEach(r3 => {
-        html += `<tr class="dre-row-l3 dre-hide dre-l3-de-${i}-${j}">
+        html += `<tr class="dre-row-l3${(aberto1 && aberto2) ? '' : ' dre-hide'}">
           <td>${r3.desc}</td>
           ${celulasDre(r3)}
         </tr>`;
@@ -2380,19 +2397,14 @@ function renderizarTabelaDre(){
 }
 
 function toggleDreL1(i){
-  const linha = document.getElementById('dre-tr-l1-' + i);
-  const abrindo = linha.classList.contains('fechado');
-  linha.classList.toggle('fechado');
-  document.querySelectorAll('.dre-l2-de-' + i).forEach(tr => tr.classList.toggle('dre-hide', !abrindo));
-  if(!abrindo){
-    document.querySelectorAll('[class*="dre-l3-de-' + i + '-"]').forEach(tr => tr.classList.add('dre-hide'));
-  }
+  if(dreAbertoL1.has(i)) dreAbertoL1.delete(i); else dreAbertoL1.add(i);
+  renderizarTabelaDre();
 }
 
 function toggleDreL2(i, j){
-  const linha = document.getElementById('dre-tr-l2-' + i + '-' + j);
-  if(linha) linha.classList.toggle('fechado');
-  document.querySelectorAll('.dre-l3-de-' + i + '-' + j).forEach(tr => tr.classList.toggle('dre-hide'));
+  const chave = i + '|' + (dreOrdemL2[i] || [])[j];
+  if(dreAbertoL2.has(chave)) dreAbertoL2.delete(chave); else dreAbertoL2.add(chave);
+  renderizarTabelaDre();
 }
 
 // ---------- Análise (gráficos Orçado x Realizado por mês) ----------
@@ -2441,8 +2453,11 @@ function atualizarGraficosDre(){
   const node = sub || grupo;
   const mesSel = dreModelo.mesIdx;
 
-  const orcadoMeses = node.orc;
-  const realizadoMeses = node.real.map((v, i) => i <= mesSel ? v : null);
+  // Despesas são negativas nos dados; nos gráficos aparecem positivas.
+  const sgn = fluxo === 'saida' ? -1 : 1;
+  const orcadoMeses = node.orc.map(v => v * sgn);
+  const realizadoMeses = node.real.map((v, i) => i <= mesSel ? v * sgn : null);
+  const realizadoFull = node.real.map(v => v * sgn);
 
   const delta = node.realYtd - node.orcYtd;
   const cardOrcadoEl = document.getElementById('dre-card-orcado');
@@ -2464,7 +2479,7 @@ function atualizarGraficosDre(){
     return;
   }
 
-  const corOrcado = '#8a8a90';
+  const corOrcado = '#808080';
   const corRealizado = '#E8622C';
 
   if(dreChartBarras){
@@ -2486,50 +2501,65 @@ function atualizarGraficosDre(){
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        layout: { padding: { top: 34 } },
         scales: {
           x: { ticks: { color: '#9A9AA0', font: { size: 10 } }, grid: { display: false } },
           y: { ticks: { color: '#9A9AA0', font: { size: 9 }, callback: v => fmtDre(v) }, grid: { color: '#2A2A2E' } }
         },
         plugins: {
           legend: { labels: { color: '#F2F0EC', font: { size: 10.5 } } },
-          datalabels: { display: false }
+          datalabels: { color: '#F2F0EC', anchor: 'end', align: 'end', rotation: -90, clip: false, font: { size: 8, weight: '600' }, formatter: v => (v === null || v === undefined) ? '' : fmtDre(v) }
         }
-      }
+      },
+      plugins: (typeof ChartDataLabels !== 'undefined') ? [ChartDataLabels] : []
     });
   }
 
-  // Acumulado: só até o mês fechado selecionado.
-  const labelsAcum = labels.slice(0, mesSel + 1);
-  let accOrcado = 0, accRealizado = 0;
-  const orcadoAcumulado = [], realizadoAcumulado = [];
-  for(let i = 0; i <= mesSel; i++){
+  // Acumulado: o ano inteiro. Realizado (linha cheia) até o mês fechado; depois,
+  // Projetado (pontilhado) = lançamentos já existentes nos meses seguintes
+  // (ex.: parcelas da Fatura BTG); sem lançamentos, a linha fica fixa até dezembro.
+  const fmtLbl = v => (v === null || v === undefined) ? '' : fmtDre(v);
+  let accOrcado = 0, accRealizado = 0, accProj = 0;
+  const orcadoAcumulado = [], realizadoAcumulado = [], projetadoAcumulado = [];
+  for(let i = 0; i < 12; i++){
     accOrcado += orcadoMeses[i];
-    accRealizado += node.real[i];
     orcadoAcumulado.push(accOrcado);
-    realizadoAcumulado.push(accRealizado);
+    if(i <= mesSel){
+      accRealizado += realizadoFull[i];
+      accProj = accRealizado;
+      realizadoAcumulado.push(accRealizado);
+      projetadoAcumulado.push(i === mesSel ? accProj : null);
+    } else {
+      accProj += realizadoFull[i];
+      realizadoAcumulado.push(null);
+      projetadoAcumulado.push(accProj);
+    }
   }
 
   if(dreChartAcumulado){
-    dreChartAcumulado.data.labels = labelsAcum;
+    dreChartAcumulado.data.labels = labels;
     dreChartAcumulado.data.datasets[0].data = orcadoAcumulado;
     dreChartAcumulado.data.datasets[1].data = realizadoAcumulado;
+    dreChartAcumulado.data.datasets[2].data = projetadoAcumulado;
     dreChartAcumulado.update();
   } else {
     const ctxA = document.getElementById('dre-chart-acumulado').getContext('2d');
     dreChartAcumulado = new Chart(ctxA, {
       type: 'line',
       data: {
-        labels: labelsAcum,
+        labels: labels,
         datasets: [
           {
             label: 'Orçado',
             data: orcadoAcumulado,
             borderColor: corOrcado,
             backgroundColor: corOrcado + '33',
+            borderDash: [6, 4],
             fill: true,
             tension: 0.25,
             pointRadius: 2,
-            pointBackgroundColor: corOrcado
+            pointBackgroundColor: corOrcado,
+            datalabels: { color: '#B5B5BA', anchor: 'end', align: 'bottom', offset: 2, formatter: fmtLbl }
           },
           {
             label: 'Realizado',
@@ -2539,27 +2569,42 @@ function atualizarGraficosDre(){
             fill: false,
             tension: 0.25,
             pointRadius: 3,
-            pointBackgroundColor: corRealizado
+            pointBackgroundColor: corRealizado,
+            datalabels: { color: '#F2A37A', anchor: 'end', align: 'top', offset: 2, formatter: fmtLbl }
+          },
+          {
+            label: 'Projetado',
+            data: projetadoAcumulado,
+            borderColor: corRealizado,
+            backgroundColor: 'transparent',
+            borderDash: [3, 4],
+            fill: false,
+            tension: 0.25,
+            pointRadius: 2,
+            pointBackgroundColor: corRealizado,
+            datalabels: { color: '#F2A37A', anchor: 'end', align: 'top', offset: 2, formatter: (v, ctx) => ctx.dataIndex <= dreModelo.mesIdx ? '' : fmtLbl(v) }
           }
         ]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        layout: { padding: { top: 18, right: 14 } },
         scales: {
           x: { ticks: { color: '#9A9AA0', font: { size: 10 } }, grid: { display: false } },
           y: { ticks: { color: '#9A9AA0', font: { size: 9 }, callback: v => fmtDre(v) }, grid: { color: '#2A2A2E' } }
         },
         plugins: {
           legend: { labels: { color: '#F2F0EC', font: { size: 10.5 } } },
-          datalabels: { display: false }
+          datalabels: { clip: false, font: { size: 8, weight: '600' } }
         }
-      }
+      },
+      plugins: (typeof ChartDataLabels !== 'undefined') ? [ChartDataLabels] : []
     });
   }
 
   if(hintEl){
-    hintEl.textContent = 'Orçado mensal conforme a planilha de orçamento; realizado até ' + NOMES_MES_CURTO[mesSel] + '/' + String(DRE_ANO).slice(2) + ' (mês fechado).';
+    hintEl.textContent = 'Orçado mensal conforme a planilha de orçamento; realizado até ' + NOMES_MES_CURTO[mesSel] + '/' + String(DRE_ANO).slice(2) + ' (mês fechado). Acumulado até dez: pontilhado laranja = projetado (lançamentos já feitos nos meses seguintes, ex.: parcelas); sem lançamentos, fica fixo.';
   }
 }
 
@@ -4499,7 +4544,7 @@ async function calcularPosicaoAtivos(titular){
   let erro = null;
   const PAGE = 1000;
   for(let from = 0; ; from += PAGE){
-    const { data: pagina, error } = await sb.from('ativos_lancamentos').select('tipo, ticker, valor, quantidade').eq('titular', titular).order('id').range(from, from + PAGE - 1);
+    const { data: pagina, error } = await sb.from('ativos_lancamentos').select('tipo, ticker, valor, quantidade, data_hora').eq('titular', titular).order('id').range(from, from + PAGE - 1);
     if(error){ erro = error; break; }
     lancs = lancs.concat(pagina);
     if(pagina.length < PAGE) break;
@@ -4522,20 +4567,41 @@ async function calcularPosicaoAtivos(titular){
       return;
     }
     if(!porTicker[l.ticker]){
-      porTicker[l.ticker] = { qtdCompra: 0, valorCompra: 0, qtdVenda: 0, rendimento: 0 };
+      porTicker[l.ticker] = { qtdCompra: 0, valorCompra: 0, qtdVenda: 0, rendimento: 0, fluxos: [] };
     }
     const t = porTicker[l.ticker];
+    const tms = new Date(l.data_hora).getTime();
     if(l.tipo === 'Compra'){
       t.qtdCompra += Number(l.quantidade || 0);
       t.valorCompra += Number(l.valor);
+      t.fluxos.push({ t: tms, v: -Number(l.valor) });
     } else if(l.tipo === 'Venda'){
       t.qtdVenda += Number(l.quantidade || 0);
+      t.fluxos.push({ t: tms, v: Number(l.valor) });
     } else if(l.tipo === 'Rendimento'){
       t.rendimento += Number(l.valor);
+      t.fluxos.push({ t: tms, v: Number(l.valor) });
     }
   });
 
   const tickers = Object.keys(porTicker).sort();
+
+  // TIR (XIRR): compras saem do caixa, vendas e rendimentos entram, e a posição
+  // atual conta como venda hoje (valor de mercado). Anualizada, base 365 dias.
+  function calcularTir(fluxos){
+    if(fluxos.length < 2) return null;
+    if(!(fluxos.some(f => f.v > 0) && fluxos.some(f => f.v < 0))) return null;
+    const t0 = Math.min(...fluxos.map(f => f.t));
+    const ano = 365 * 86400000;
+    const vpl = r => fluxos.reduce((sum, f) => sum + f.v / Math.pow(1 + r, (f.t - t0) / ano), 0);
+    let lo = -0.99, hi = 100;
+    if(vpl(lo) * vpl(hi) > 0) return null;
+    for(let i = 0; i < 200; i++){
+      const mid = (lo + hi) / 2;
+      if(vpl(lo) * vpl(mid) <= 0) hi = mid; else lo = mid;
+    }
+    return ((lo + hi) / 2) * 100;
+  }
 
   function montaPosicao(ticker){
     const t = porTicker[ticker];
@@ -4545,7 +4611,10 @@ async function calcularPosicaoAtivos(titular){
     const cotacaoAtual = cotacaoPorTicker[ticker] || 0;
     const valorAtual = quantidade * cotacaoAtual;
     const rentabilidade = investido > 0 ? ((valorAtual - investido) / investido) * 100 : 0;
-    return { ticker, quantidade, precoMedio, investido, cotacaoAtual, valorAtual, rentabilidade, rendimento: t.rendimento };
+    const fluxosTir = t.fluxos.slice();
+    if(quantidade > 0 && cotacaoAtual > 0) fluxosTir.push({ t: Date.now(), v: valorAtual });
+    const tir = (quantidade > 0 && !(cotacaoAtual > 0)) ? null : calcularTir(fluxosTir);
+    return { ticker, quantidade, precoMedio, investido, cotacaoAtual, valorAtual, rentabilidade, rendimento: t.rendimento, tir };
   }
 
   const posicoes = tickers.map(montaPosicao);
@@ -4654,6 +4723,9 @@ async function carregarPosicao(){
   // valor atual deles sai zerado e subestima o patrimônio — sinaliza na tela.
   const semCotacao = [...fiis, ...acoes].filter(p => p.quantidade > 0 && !(p.cotacaoAtual > 0)).map(p => p.ticker);
 
+  const fmt2 = v => v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmtTir = v => v === null ? '—' : (v > 999 ? '>999%' : (v >= 0 ? '+' : '') + v.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '% a.a.');
+
   function renderItem(p){
     const corRent = p.rentabilidade < 0 ? 'var(--red)' : 'var(--green)';
     const faltaCot = p.quantidade > 0 && !(p.cotacaoAtual > 0);
@@ -4661,19 +4733,20 @@ async function carregarPosicao(){
       <div class="pos-item">
         <div class="pos-item-top">
           <span class="pos-ticker">${p.ticker}${faltaCot ? ' <span style="color:var(--red);font-size:11px;font-weight:700;">⚠ sem cotação</span>' : ''}</span>
-          <span class="pos-valor-atual" onclick="editarCotacao('${p.ticker}', ${p.cotacaoAtual})">R$ ${p.cotacaoAtual.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+          <span class="pos-valor-atual" onclick="editarCotacao('${p.ticker}', ${p.cotacaoAtual})">R$ ${fmt2(p.cotacaoAtual)}</span>
         </div>
-        <div class="pos-item-sub">
-          <span># <b>${p.quantidade.toLocaleString('pt-BR')}</b></span>
-          <span>Preço médio <b>R$ ${p.precoMedio.toLocaleString('pt-BR',{minimumFractionDigits:2})}</b></span>
-        </div>
-        <div class="pos-item-sub">
-          <span>Investido <b>R$ ${p.investido.toLocaleString('pt-BR',{minimumFractionDigits:2})}</b></span>
-          <span>Valor atual <b>R$ ${p.valorAtual.toLocaleString('pt-BR',{minimumFractionDigits:2})}</b></span>
-        </div>
-        <div class="pos-item-sub">
-          <span>Rendimento recebido <b>R$ ${p.rendimento.toLocaleString('pt-BR',{minimumFractionDigits:2})}</b></span>
-          <span style="color:${corRent};font-weight:700;">${p.rentabilidade >= 0 ? '+' : ''}${p.rentabilidade.toLocaleString('pt-BR',{maximumFractionDigits:1})}%</span>
+        <div class="pos-grid">
+          <div class="pos-col">
+            <span># <b>${p.quantidade.toLocaleString('pt-BR')}</b></span>
+            <span>Preço Médio <b>R$ ${fmt2(p.precoMedio)}</b></span>
+            <span>Rendimentos <b>R$ ${fmt2(p.rendimento)}</b></span>
+            <span>TIR <b style="color:${p.tir === null ? 'var(--muted)' : (p.tir < 0 ? 'var(--red)' : 'var(--green)')};">${fmtTir(p.tir)}</b></span>
+          </div>
+          <div class="pos-col pos-col-dir">
+            <span>Investido <b>R$ ${fmt2(p.investido)}</b></span>
+            <span>Posição <b>R$ ${fmt2(p.valorAtual)}</b></span>
+            <span style="color:${corRent};font-weight:700;">Rentabilidade ${p.rentabilidade >= 0 ? '+' : ''}${p.rentabilidade.toLocaleString('pt-BR',{maximumFractionDigits:1})}%</span>
+          </div>
         </div>
       </div>`;
   }
