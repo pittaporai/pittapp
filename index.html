@@ -88,9 +88,9 @@
   .casa-table col.col-pessoa{width:26%;}
   /* Realizado (col 4) e Δ (col 5): tons de laranja escalando com o nível da linha (mesma família de cor, sem amarelo) */
   .dre-table th:nth-child(4){background:#E97132;color:#fff;}
-  .dre-table th:nth-child(5){background:#215C98;color:#fff;}
-  .dre-table td:nth-child(4){background:#FBE2D5;color:#BE5014;font-weight:700;}
-  .dre-table td:nth-child(5){background:#DAE9F8;color:#215C98;font-weight:700;}
+  .dre-table th:nth-child(5){background:#7A3B4A;color:#fff;}
+  .dre-table td:nth-child(4){background:#FBE2D5;color:#E97132;font-weight:700;}
+  .dre-table td:nth-child(5){background:#ECD8DD;color:#7A3B4A;font-weight:700;}
   /* Casa: só 4 colunas (Mês/Casa/Saldo/Pessoa) — a 4ª é texto (nome), não deve herdar o destaque laranja acima; as 4 colunas usam o mesmo fundo preto */
   .casa-table td{background:#000;}
   .casa-table th:nth-child(4){background:#000;}
@@ -98,14 +98,14 @@
   /* Nível 1 — Receitas/Despesas: cinza mais forte, cabeçalho de grupo */
   .dre-row-l1{background:#000;color:#fff;font-weight:700;cursor:pointer;}
   .dre-row-l1 td:nth-child(4){background:#E97132;color:#fff;}
-  .dre-row-l1 td:nth-child(5){background:#215C98;color:#fff;}
+  .dre-row-l1 td:nth-child(5){background:#7A3B4A;color:#fff;}
   .dre-row-l1 td:first-child::before{color:#fff !important;}
   .dre-row-l1 td:first-child::before{content:'▸ ';display:inline-block;color:var(--muted);font-size:10px;transition:transform .15s;}
   .dre-row-l1.fechado td:first-child::before{content:'▾ ';}
   /* Nível 2 — grupos (Empreendedorismo, Outros, Receitas...): cinza intermediário, com linha sutil separando do próximo */
   .dre-row-l2{background:#808080;font-weight:700;color:#fff;cursor:pointer;}
   .dre-row-l2 td:nth-child(4){background:#F1A983;color:#fff;}
-  .dre-row-l2 td:nth-child(5){background:#A6C9EC;color:#fff;}
+  .dre-row-l2 td:nth-child(5){background:#D19FAB;color:#fff;}
   .dre-row-l2 td:first-child::before{color:#fff !important;}
   .dre-row-l2 td:first-child::before{content:'▸ ';display:inline-block;color:var(--muted);font-size:10px;}
   .dre-row-l2.fechado td:first-child::before{content:'▾ ';}
@@ -132,7 +132,7 @@
   .dre-row-l1 td:first-child::before, .dre-row-l2 td:first-child::before{font-size:15px !important;line-height:1;vertical-align:-1px;}
   tfoot .dre-row-resultado{background:#000;color:#fff;font-weight:700;}
   tfoot .dre-row-resultado td:nth-child(4){background:#E97132;color:#fff;}
-  tfoot .dre-row-resultado td:nth-child(5){background:#215C98;color:#fff;}
+  tfoot .dre-row-resultado td:nth-child(5){background:#7A3B4A;color:#fff;}
 
   .r-hint{font-size:11px;color:#5f5e5a;margin-top:16px;text-align:center;}
 
