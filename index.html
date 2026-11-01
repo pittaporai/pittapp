@@ -214,6 +214,15 @@
   .pos-item-top{display:flex;justify-content:space-between;align-items:center;}
   .pos-ticker{font-weight:700;font-size:14px;color:var(--orange);}
   .pos-valor-atual{font-weight:700;font-size:14px;cursor:pointer;text-decoration:underline dotted;color:var(--orange);}
+  .pos-tab-scroll{overflow-x:auto;border-radius:10px;border:1px solid #fff;}
+  .pos-tab{width:100%;min-width:660px;border-collapse:collapse;font-size:11.5px;}
+  .pos-tab th{background:#000;color:#fff;font-size:10px;text-transform:uppercase;padding:9px 8px;text-align:right;white-space:nowrap;}
+  .pos-tab th:first-child, .pos-tab td:first-child{text-align:left;position:sticky;left:0;}
+  .pos-tab td{padding:9px 8px;text-align:right;white-space:nowrap;color:var(--gray2);border-bottom:1px solid rgba(255,255,255,.08);}
+  .pos-tab tr.pos-tab-item td{background:var(--panel-2);}
+  .pos-tab-ticker{font-weight:700;color:var(--orange) !important;}
+  .pos-tab tr.pos-tab-grupo td{background:#808080;color:#fff;font-weight:700;}
+  .pos-tab tfoot td{background:#000;color:#fff;font-weight:700;border-bottom:none;}
   .pos-grid{display:flex;justify-content:space-between;gap:10px;margin-top:8px;font-size:11.5px;color:var(--muted);}
   .pos-col{display:flex;flex-direction:column;gap:5px;}
   .pos-col-dir{text-align:right;}
@@ -1157,6 +1166,16 @@
       <div id="pos-lista"></div>
       <p class="r-hint">Toca no valor de um ativo pra ajustar a cotação à mão, se precisar (a próxima atualização automática sobrescreve). Investido/Rendimento são acumulados desde o início. Toca no nome do grupo pra abrir os ativos.</p>
       <p class="r-hint">Cotações atualizadas automaticamente de segunda a sexta (depois do fechamento da bolsa). Última atualização: <span id="pos-ultima-cotacao">–</span>. Diferenças de poucos centavos no Saldo Investimento podem ocorrer por arredondamento nos cálculos — não afetam os lançamentos.</p>
+
+      <div id="pos-secoes-matheus">
+        <p class="chart-titulo laranja" style="margin-top:26px;">Posição</p>
+        <div id="pos-tabela"></div>
+        <p class="r-hint">PM = preço médio · Mercado = cotação atual · Δ = Mercado − PM (por cota) · Posição = quantidade × Mercado · Rent. = (Posição − Investido) ÷ Investido · TIR anualizada, com rendimentos, tratando a posição atual como venda hoje. Só ativos com quantidade em carteira.</p>
+
+        <p class="chart-titulo laranja" style="margin-top:26px;">Evolução do patrimônio</p>
+        <div style="position:relative;height:280px;margin-top:8px;"><canvas id="pos-chart-patrimonio"></canvas></div>
+        <p class="r-hint" id="pos-chart-hint"></p>
+      </div>
     </div>
   </div>
 
@@ -4750,7 +4769,15 @@ async function calcularPosicaoAtivos(titular){
   const patrimonioTotal = totalFiis + totalAcoes;
 
   const ultimaCotacao = cotacoes.reduce((mx, c) => (c.atualizado_em && c.atualizado_em > mx ? c.atualizado_em : mx), '');
-  return { fiis, acoes, totalFiis, totalAcoes, patrimonioTotal, custosGerais, ultimaCotacao };
+  const fluxosGrupo = lista => lista.flatMap(p => {
+    const fx = porTicker[p.ticker].fluxos.slice();
+    if(p.quantidade > 0 && p.cotacaoAtual > 0) fx.push({ t: Date.now(), v: p.valorAtual });
+    return fx;
+  });
+  const tirFiis = calcularTir(fluxosGrupo(fiis));
+  const tirAcoes = calcularTir(fluxosGrupo(acoes));
+  const tirTotal = calcularTir(fluxosGrupo(posicoes));
+  return { fiis, acoes, totalFiis, totalAcoes, patrimonioTotal, custosGerais, ultimaCotacao, tirFiis, tirAcoes, tirTotal };
 }
 
 // "Saldo Investimento" = dinheiro que já entrou no "bolso" de FIIs/Ações (aportes
@@ -4895,6 +4922,15 @@ async function carregarPosicao(){
   // Patrimônio = valor de mercado de FIIs/Ações + Saldo Investimento (caixa na carteira).
   totalEl.textContent = fmtR$(patrimonioTotal + saldoInvestimento);
 
+  const secMatheus = document.getElementById('pos-secoes-matheus');
+  if(secMatheus){
+    secMatheus.style.display = ehMichelle() ? 'none' : '';
+    if(!ehMichelle()){
+      renderizarTabelaPosicao(posicao);
+      carregarEvolucaoPatrimonio(posicao).catch(e => { const h = document.getElementById('pos-chart-hint'); if(h) h.textContent = 'Erro no gráfico: ' + e.message; });
+    }
+  }
+
   const gruposHtml = renderGrupo('fiis', 'FIIs', fiis, totalFiis) + renderGrupo('acoes', 'Ações', acoes, totalAcoes);
   const avisoCot = semCotacao.length
     ? '<p style="color:var(--red);font-size:12.5px;text-align:center;padding:8px 4px;">⚠ Sem cotação para: ' + semCotacao.join(', ') + '. O valor atual deles está zerado no patrimônio.</p>'
@@ -4903,6 +4939,211 @@ async function carregarPosicao(){
   if(custosGerais > 0){
     listaEl.innerHTML += '<p class="r-hint">Taxas/multas gerais (sem ticker): R$ ' + custosGerais.toLocaleString('pt-BR',{minimumFractionDigits:2}) + '</p>';
   }
+}
+
+// ---------- Posição: tabela resumida + evolução do patrimônio ----------
+
+let posChartPatrimonio = null;
+
+function renderizarTabelaPosicao(posicao){
+  const el = document.getElementById('pos-tabela');
+  if(!el) return;
+  const { fiis, acoes, totalFiis, totalAcoes, tirFiis, tirAcoes, tirTotal } = posicao;
+  const fmt2 = v => v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmt0 = v => Math.round(v).toLocaleString('pt-BR');
+  const pct = v => (v >= 0 ? '+' : '') + v.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%';
+  const tirTxt = v => v === null || v === undefined ? '—' : (v > 999 ? '>999%' : pct(v));
+  const cor = v => v < 0 ? 'var(--red)' : 'var(--green)';
+  const corTir = v => (v === null || v === undefined) ? 'var(--muted)' : cor(v);
+
+  const ativas = lista => lista.filter(p => p.quantidade > 0);
+
+  function linhaAtivo(p){
+    const delta = p.cotacaoAtual - p.precoMedio;
+    const sem = !(p.cotacaoAtual > 0);
+    return `<tr class="pos-tab-item">
+      <td class="pos-tab-ticker">${p.ticker}</td>
+      <td>${p.quantidade.toLocaleString('pt-BR')}</td>
+      <td>${fmt2(p.precoMedio)}</td>
+      <td style="color:var(--orange);font-weight:700;">${sem ? '⚠' : fmt2(p.cotacaoAtual)}</td>
+      <td style="color:${sem ? 'var(--muted)' : cor(delta)};">${sem ? '—' : (delta >= 0 ? '+' : '') + fmt2(delta)}</td>
+      <td>${fmt2(p.investido)}</td>
+      <td>${fmt2(p.valorAtual)}</td>
+      <td style="color:${sem ? 'var(--muted)' : cor(p.rentabilidade)};">${sem ? '—' : pct(p.rentabilidade)}</td>
+      <td style="color:${corTir(p.tir)};">${tirTxt(p.tir)}</td>
+    </tr>`;
+  }
+
+  function blocoGrupo(nome, lista, tirGrupo){
+    const l = ativas(lista);
+    if(l.length === 0) return '';
+    const inv = l.reduce((s, p) => s + p.investido, 0);
+    const pos = l.reduce((s, p) => s + p.valorAtual, 0);
+    const rent = inv > 0 ? ((pos - inv) / inv) * 100 : 0;
+    return `<tr class="pos-tab-grupo">
+      <td>${nome}</td><td></td><td></td><td></td>
+      <td>${(pos - inv) >= 0 ? '+' : ''}${fmt0(pos - inv)}</td>
+      <td>${fmt0(inv)}</td>
+      <td>${fmt0(pos)}</td>
+      <td>${pct(rent)}</td>
+      <td>${tirTxt(tirGrupo)}</td>
+    </tr>` + l.map(linhaAtivo).join('');
+  }
+
+  const corpo = blocoGrupo('FIIs', fiis, tirFiis) + blocoGrupo('Ações', acoes, tirAcoes);
+  if(!corpo){ el.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:12px 0;">Nenhum ativo em carteira.</p>'; return; }
+
+  const todas = ativas([...fiis, ...acoes]);
+  const invT = todas.reduce((s, p) => s + p.investido, 0);
+  const posT = todas.reduce((s, p) => s + p.valorAtual, 0);
+  const rentT = invT > 0 ? ((posT - invT) / invT) * 100 : 0;
+
+  el.innerHTML = `<div class="pos-tab-scroll"><table class="pos-tab">
+    <thead><tr><th>Ativo</th><th>#</th><th>PM</th><th>Mercado</th><th>Δ</th><th>Investido</th><th>Posição</th><th>Rent.</th><th>TIR</th></tr></thead>
+    <tbody>${corpo}</tbody>
+    <tfoot><tr><td>Total</td><td></td><td></td><td></td><td>${(posT - invT) >= 0 ? '+' : ''}${fmt0(posT - invT)}</td><td>${fmt0(invT)}</td><td>${fmt0(posT)}</td><td>${pct(rentT)}</td><td>${tirTxt(tirTotal)}</td></tr></tfoot>
+  </table></div>`;
+}
+
+// Evolução do patrimônio (Caixa líquido + Investimentos) nos últimos 12 fins de mês + hoje.
+// Histórico: saldos das contas na taxa média do mês; FIIs/Ações a custo (sem histórico de
+// cotações). O último ponto ("Hoje") bate com o Resumo: FIIs/Ações a mercado e BTG+ Michelle a receber.
+async function carregarEvolucaoPatrimonio(posicao){
+  const cv = document.getElementById('pos-chart-patrimonio');
+  const hint = document.getElementById('pos-chart-hint');
+  if(!cv || typeof Chart === 'undefined') return;
+
+  const { data: contas } = await sb.from('contas').select('id, grupo_resumo').eq('ativa', true).not('grupo_resumo', 'is', null).neq('titular', 'Michelle');
+  const grupoDe = {};
+  (contas || []).forEach(c => { grupoDe[c.id] = c.grupo_resumo; });
+
+  let lancs = [];
+  const PAGE = 1000;
+  for(let from = 0; ; from += PAGE){
+    const { data: pagina, error } = await sb.from('lancamentos').select('conta_id, fluxo, valor, moeda, data_hora, categoria_id, dono').order('id').range(from, from + PAGE - 1);
+    if(error){ if(hint) hint.textContent = 'Erro ao carregar o histórico: ' + error.message; return; }
+    lancs = lancs.concat(pagina);
+    if(pagina.length < PAGE) break;
+  }
+
+  const [catSaidaId, catEntradaId, ativosRes, cotRes, cfgRes, cotHoje, btgAberto] = await Promise.all([
+    categoriaFiisAcoesId('saida'),
+    categoriaFiisAcoesId('entrada'),
+    sb.from('ativos_lancamentos').select('tipo, ticker, valor, quantidade, data_hora').eq('titular', 'Matheus'),
+    sb.from('cotacoes_mensais').select('moeda, ano, mes, taxa_media'),
+    sb.from('config').select('chave, valor'),
+    buscarCotacoes(),
+    calcularTotalBtgMichelleAberto()
+  ]);
+  const ativos = ativosRes.data || [];
+  const cotMensais = cotRes.data || [];
+  const config = cfgRes.data || [];
+
+  // Pontos: fim dos últimos 12 meses fechados + hoje.
+  const agora = new Date();
+  const pontos = [];
+  for(let k = 12; k >= 1; k--){
+    const d = new Date(agora.getFullYear(), agora.getMonth() - k + 1, 1); // 1º dia do mês seguinte ao ponto
+    const ref = new Date(d.getFullYear(), d.getMonth() - 1, 1);
+    pontos.push({
+      label: NOMES_MES_CURTO[ref.getMonth()] + '/' + String(ref.getFullYear()).slice(2),
+      cut: d.getTime(),
+      key: ref.getFullYear() + '-' + String(ref.getMonth() + 1).padStart(2, '0')
+    });
+  }
+  pontos.push({ label: 'Hoje', cut: Infinity, key: null });
+
+  const caixa = [], inv = [];
+  pontos.forEach(pt => {
+    const taxa = m => (m === 'BRL' || !m) ? 1 : (pt.key ? taxaCasaMes(m, pt.key, cotMensais, config) : (cotHoje[m] != null ? cotHoje[m] : 1));
+    let cx = 0, iv = 0;
+    let aportes = 0, resgates = 0;
+    lancs.forEach(l => {
+      if(new Date(l.data_hora).getTime() >= pt.cut) return;
+      const v = (l.fluxo === 'entrada' ? 1 : -1) * Number(l.valor);
+      const g = grupoDe[l.conta_id];
+      if(g === 'Caixa líquido') cx += v * taxa(l.moeda);
+      else if(g === 'Investimentos') iv += v * taxa(l.moeda);
+      if(l.dono === 'Matheus'){
+        if(catSaidaId && l.categoria_id === catSaidaId && l.fluxo === 'saida') aportes += Number(l.valor);
+        if(catEntradaId && l.categoria_id === catEntradaId && l.fluxo === 'entrada') resgates += Number(l.valor);
+      }
+    });
+
+    // Ativos até o ponto: custo da posição + caixa dentro da carteira (Saldo Investimento).
+    const porTicker = {};
+    let compras = 0, rend = 0, vendas = 0, taxas = 0;
+    ativos.forEach(a => {
+      if(new Date(a.data_hora).getTime() >= pt.cut) return;
+      const v = Number(a.valor);
+      if(a.tipo === 'Compra') compras += v;
+      else if(a.tipo === 'Rendimento' || a.tipo === 'Rendimento em Conta') rend += v;
+      else if(a.tipo === 'Venda') vendas += v;
+      else if(a.tipo === 'Taxa' || a.tipo === 'Multa') taxas += v;
+      if(!a.ticker) return;
+      const t = porTicker[a.ticker] || (porTicker[a.ticker] = { qc: 0, vc: 0, qv: 0 });
+      if(a.tipo === 'Compra'){ t.qc += Number(a.quantidade || 0); t.vc += v; }
+      else if(a.tipo === 'Venda'){ t.qv += Number(a.quantidade || 0); }
+    });
+    const custo = Object.values(porTicker).reduce((s, t) => {
+      const q = t.qc - t.qv;
+      return s + (q > 0 && t.qc > 0 ? q * (t.vc / t.qc) : 0);
+    }, 0);
+    const saldoInv = aportes - compras + rend + vendas - resgates - taxas;
+    const ativosVal = pt.key === null && posicao && !posicao.erro ? posicao.patrimonioTotal : custo;
+
+    if(pt.key === null) cx += (btgAberto || 0);
+    caixa.push(Math.round(cx));
+    inv.push(Math.round(iv + ativosVal + saldoInv));
+  });
+  const total = caixa.map((v, i) => v + inv[i]);
+
+  const fmtK = v => {
+    if(v === null || v === undefined) return '';
+    const a = Math.abs(v);
+    if(a >= 1e6) return (v / 1e6).toFixed(2).replace('.', ',') + 'M';
+    if(a >= 1000) return Math.round(v / 1000) + 'k';
+    return String(Math.round(v));
+  };
+  const labels = pontos.map(p => p.label);
+  const maxTot = Math.max(0, ...total);
+  const minTot = Math.min(0, ...caixa, ...inv);
+
+  if(posChartPatrimonio){
+    posChartPatrimonio.data.labels = labels;
+    posChartPatrimonio.data.datasets[0].data = caixa;
+    posChartPatrimonio.data.datasets[1].data = inv;
+    posChartPatrimonio.data.datasets[2].data = total;
+    posChartPatrimonio.options.scales.y.suggestedMax = maxTot * 1.12;
+    posChartPatrimonio.update();
+  } else {
+    posChartPatrimonio = new Chart(cv.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          { label: 'Caixa líquido', data: caixa, backgroundColor: '#808080', stack: 'pat', datalabels: { color: '#fff', anchor: 'center', align: 'center', formatter: fmtK } },
+          { label: 'Investimentos', data: inv, backgroundColor: '#E8622C', stack: 'pat', datalabels: { color: '#fff', anchor: 'center', align: 'center', formatter: fmtK } },
+          { type: 'line', label: 'Total', data: total, borderWidth: 0, showLine: false, pointRadius: 0, pointHoverRadius: 0, datalabels: { color: '#F2F0EC', anchor: 'end', align: 'top', offset: 2, font: { size: 9, weight: '700' }, formatter: fmtK } }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        layout: { padding: { top: 22 } },
+        scales: {
+          x: { stacked: true, ticks: { color: '#9A9AA0', font: { size: 9 } }, grid: { display: false } },
+          y: { stacked: true, suggestedMax: maxTot * 1.12, ticks: { color: '#9A9AA0', font: { size: 9 }, callback: v => fmtK(v) }, grid: { color: '#2A2A2E' } }
+        },
+        plugins: {
+          legend: { labels: { color: '#F2F0EC', font: { size: 10.5 }, filter: it => it.text !== 'Total' } },
+          datalabels: { clip: false, font: { size: 8, weight: '600' } }
+        }
+      },
+      plugins: (typeof ChartDataLabels !== 'undefined') ? [ChartDataLabels] : []
+    });
+  }
+  if(hint) hint.textContent = 'Patrimônio = Caixa líquido + Investimentos. Meses anteriores: saldos na taxa média do mês e FIIs/Ações a custo (ainda não guardamos histórico de cotações); "Hoje" bate com o Resumo (FIIs/Ações a mercado, BTG+ Michelle a receber incluso no caixa).';
 }
 
 // ---------- Histórico de ativos (consulta, edição, exclusão) ----------
