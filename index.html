@@ -214,6 +214,9 @@
   .pos-item-top{display:flex;justify-content:space-between;align-items:center;}
   .pos-ticker{font-weight:700;font-size:14px;color:var(--orange);}
   .pos-valor-atual{font-weight:700;font-size:14px;cursor:pointer;text-decoration:underline dotted;color:var(--orange);}
+  .pos-mini-card{background:var(--panel-2);border-radius:12px;padding:14px;margin-top:12px;}
+  .pos-tab th{cursor:pointer;}
+  .pos-tab tr.pos-tab-grupo{cursor:pointer;}
   .pos-tab-scroll{overflow-x:auto;border-radius:10px;border:1px solid #fff;}
   .pos-tab{width:100%;min-width:660px;border-collapse:collapse;font-size:11.5px;}
   .pos-tab th{background:#000;color:#fff;font-size:10px;text-transform:uppercase;padding:9px 8px;text-align:right;white-space:nowrap;}
@@ -760,7 +763,7 @@
       </div>
 
       <div class="destaque-sub" style="margin-top:26px;">
-        <div class="destaque-sub-item"><span class="num" id="casa-despesa-media">–</span><span class="lbl" id="casa-despesa-media-lbl">Despesa Casa média · últimos 12 meses</span></div>
+        <div class="destaque-sub-item"><span class="num" id="casa-despesa-media">–</span><span class="lbl" id="casa-despesa-media-lbl">Média últimos 12 meses</span></div>
       </div>
 
       <p class="chart-titulo" style="margin-top:26px;">Detalhe por mês</p>
@@ -1165,10 +1168,24 @@
         </div>
       </div>
 
+      <div class="moeda-grupo" id="pos-fiis-wrap" style="margin-bottom:10px;">
+        <div class="moeda-total-linha">
+          <span>FIIs</span>
+          <span id="pos-total-fiis">...</span>
+        </div>
+      </div>
+
+      <div class="moeda-grupo" id="pos-acoes-wrap" style="margin-bottom:10px;">
+        <div class="moeda-total-linha">
+          <span>Ações</span>
+          <span id="pos-total-acoes">...</span>
+        </div>
+      </div>
+
       <div id="pos-saldo-contas"></div>
 
       <div id="pos-lista"></div>
-      <p class="r-hint">Toca no valor de um ativo pra ajustar a cotação à mão, se precisar (a próxima atualização automática sobrescreve). Investido/Rendimento são acumulados desde o início. Toca no nome do grupo pra abrir os ativos.</p>
+      <p class="r-hint">Toca num ativo da tabela pra abrir o preço da cota e a posição acumulada dele. No card, toca na cotação pra ajustar à mão, se precisar (a próxima atualização automática sobrescreve). Investido/Rendimento são acumulados desde o início.</p>
       <p class="r-hint">Cotações atualizadas automaticamente de segunda a sexta (depois do fechamento da bolsa). Última atualização: <span id="pos-ultima-cotacao">–</span>. Diferenças de poucos centavos no Saldo Investimento podem ocorrer por arredondamento nos cálculos — não afetam os lançamentos.</p>
 
       <div id="pos-secoes-matheus">
@@ -1176,12 +1193,21 @@
         <div id="pos-tabela"></div>
         <p class="r-hint">PM = preço médio · Mercado = cotação atual · Δ = Mercado − PM (por cota) · Posição = quantidade × Mercado · Rent. = (Posição − Investido) ÷ Investido · TIR anualizada, com rendimentos, tratando a posição atual como venda hoje. Só ativos com quantidade em carteira.</p>
 
-        <p class="chart-titulo" id="pos-ativo-titulo1" style="margin-top:22px;">Preço da cota</p>
-        <div style="position:relative;height:230px;margin-top:8px;"><canvas id="pos-chart-preco"></canvas></div>
-
-        <p class="chart-titulo" id="pos-ativo-titulo2" style="margin-top:22px;">Posição acumulada e volume comprado</p>
-        <div style="position:relative;height:230px;margin-top:8px;"><canvas id="pos-chart-posicao"></canvas></div>
-        <p class="r-hint" id="pos-ativo-hint"></p>
+        <div id="pos-ativo-cards" style="display:none;">
+          <div class="pos-mini-card">
+            <div class="pos-item-top">
+              <span class="pos-ticker" id="pos-card-ticker"></span>
+              <span class="pos-valor-atual" id="pos-card-cotacao"></span>
+            </div>
+            <p class="chart-titulo" style="margin:12px 0 6px;">Preço da cota</p>
+            <div style="position:relative;height:240px;"><canvas id="pos-chart-preco"></canvas></div>
+          </div>
+          <div class="pos-mini-card">
+            <p class="chart-titulo" style="margin:0 0 6px;">Posição acumulada e volume comprado</p>
+            <div style="position:relative;height:240px;"><canvas id="pos-chart-posicao"></canvas></div>
+          </div>
+          <p class="r-hint" id="pos-ativo-hint"></p>
+        </div>
 
         <p class="chart-titulo laranja" style="margin-top:26px;">Evolução do patrimônio</p>
         <div style="position:relative;height:280px;margin-top:8px;"><canvas id="pos-chart-patrimonio"></canvas></div>
@@ -1992,7 +2018,6 @@ async function carregarResumo(){
       </div>`;
   }).join('');
 
-  gruposEl.innerHTML += '<p class="r-hint">O total de cada grupo converte tudo pra R$ na cotação do dia. Quando um grupo tem mais de uma moeda, aparece um subtotal por moeda — dentro dele, cada conta é exibida na moeda original.</p>';
 
   resumoCarregado = true;
 }
@@ -2965,7 +2990,7 @@ async function carregarCasa(){
     const mediaDespesa = ultimos12.length ? ultimos12.reduce((s, l) => s + l.despesaCasa, 0) / ultimos12.length : 0;
     mediaEl.textContent = 'R$ ' + fmtDre(mediaDespesa);
     const lblEl = document.getElementById('casa-despesa-media-lbl');
-    if(lblEl) lblEl.textContent = 'Despesa Casa média · últimos ' + ultimos12.length + ' meses';
+    if(lblEl) lblEl.textContent = 'Média últimos ' + ultimos12.length + ' meses';
   }
 
   if(typeof Chart === 'undefined') { casaCarregado = true; return; }
@@ -4278,8 +4303,8 @@ async function carregarAnalise(){
 
   // Km por corrida: mesmo eixo X (uma barra por corrida, alinhada com o ponto do pace) e
   // largura do eixo Y fixa nos dois gráficos pra manter as colunas alinhadas na vertical.
-  const kmData = corridas.map(c => Number(c.km.toFixed(2)));
-  const fmtKm = v => Number(v).toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+  const kmData = corridas.map(c => Number(c.km.toFixed(1)));
+  const fmtKm = v => Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
   const fixaEixoY = scale => { scale.width = 96; };
   const ctxKm = document.getElementById('analise-chart-km').getContext('2d');
   if(analiseChartKm){
@@ -4922,50 +4947,6 @@ async function carregarPosicao(){
   // valor atual deles sai zerado e subestima o patrimônio — sinaliza na tela.
   const semCotacao = [...fiis, ...acoes].filter(p => p.quantidade > 0 && !(p.cotacaoAtual > 0)).map(p => p.ticker);
 
-  const fmt2 = v => v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const fmtTir = v => v === null ? '—' : (v > 999 ? '>999%' : (v >= 0 ? '+' : '') + v.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '% a.a.');
-
-  function renderItem(p){
-    const corRent = p.rentabilidade < 0 ? 'var(--red)' : 'var(--green)';
-    const faltaCot = p.quantidade > 0 && !(p.cotacaoAtual > 0);
-    return `
-      <div class="pos-item">
-        <div class="pos-item-top">
-          <span class="pos-ticker">${p.ticker}${faltaCot ? ' <span style="color:var(--red);font-size:11px;font-weight:700;">⚠ sem cotação</span>' : ''}</span>
-          <span class="pos-valor-atual" onclick="editarCotacao('${p.ticker}', ${p.cotacaoAtual})">R$ ${fmt2(p.cotacaoAtual)}</span>
-        </div>
-        <div class="pos-grid">
-          <div class="pos-col">
-            <span># <b>${p.quantidade.toLocaleString('pt-BR')}</b></span>
-            <span>Preço Médio <b>R$ ${fmt2(p.precoMedio)}</b></span>
-            <span>Rendimentos <b>R$ ${fmt2(p.rendimento)}</b></span>
-            <span>TIR <b style="color:${p.tir === null ? 'var(--muted)' : (p.tir < 0 ? 'var(--red)' : 'var(--green)')};">${fmtTir(p.tir)}</b></span>
-          </div>
-          <div class="pos-col pos-col-dir">
-            <span>Investido <b>R$ ${fmt2(p.investido)}</b></span>
-            <span>Posição <b>R$ ${fmt2(p.valorAtual)}</b></span>
-            <span style="color:${corRent};font-weight:700;">Rentabilidade ${p.rentabilidade >= 0 ? '+' : ''}${p.rentabilidade.toLocaleString('pt-BR',{maximumFractionDigits:1})}%</span>
-          </div>
-        </div>
-      </div>`;
-  }
-
-  function renderGrupo(id, nome, lista, totalGrupo){
-    if(lista.length === 0) return '';
-    const itens = lista.map(renderItem).join('');
-    return `
-      <div class="grupo" id="posgrupo-${id}">
-        <div class="grupo-head" onclick="togglePosGrupo('${id}')">
-          <span class="grupo-nome">${nome}</span>
-          <span style="display:flex;align-items:center;">
-            <span class="grupo-valor">${fmtR$(totalGrupo)}</span>
-            <span class="chev">›</span>
-          </span>
-        </div>
-        <div class="grupo-sub">${itens}</div>
-      </div>`;
-  }
-
   // Patrimônio = valor de mercado de FIIs/Ações + Saldo Investimento (caixa na carteira).
   totalEl.textContent = fmtR$(patrimonioTotal + saldoInvestimento);
 
@@ -4978,11 +4959,16 @@ async function carregarPosicao(){
     }
   }
 
-  const gruposHtml = renderGrupo('fiis', 'FIIs', fiis, totalFiis) + renderGrupo('acoes', 'Ações', acoes, totalAcoes);
+  const fiisWrap = document.getElementById('pos-fiis-wrap');
+  const acoesWrap = document.getElementById('pos-acoes-wrap');
+  if(fiisWrap) fiisWrap.style.display = ehMichelle() ? 'none' : '';
+  if(acoesWrap) acoesWrap.style.display = ehMichelle() ? 'none' : '';
+  document.getElementById('pos-total-fiis').textContent = fmtR$(totalFiis);
+  document.getElementById('pos-total-acoes').textContent = fmtR$(totalAcoes);
   const avisoCot = semCotacao.length
     ? '<p style="color:var(--red);font-size:12.5px;text-align:center;padding:8px 4px;">⚠ Sem cotação para: ' + semCotacao.join(', ') + '. O valor atual deles está zerado no patrimônio.</p>'
     : '';
-  listaEl.innerHTML = avisoCot + (gruposHtml || '<p style="color:var(--muted);font-size:13px;text-align:center;padding:20px 0;">Nenhum ativo lançado ainda.</p>');
+  listaEl.innerHTML = avisoCot;
   if(custosGerais > 0){
     listaEl.innerHTML += '<p class="r-hint">Taxas/multas gerais (sem ticker): R$ ' + custosGerais.toLocaleString('pt-BR',{minimumFractionDigits:2}) + '</p>';
   }
@@ -4996,6 +4982,19 @@ let posDados = null;
 let posAtivoSel = null;
 let posChartPreco = null;
 let posChartPosicao = null;
+let posSort = { col: null, dir: 'desc' };
+const posGrupoAberto = { 'FIIs': false, 'Ações': false };
+
+function ordenarPos(col){
+  if(posSort.col === col) posSort.dir = posSort.dir === 'desc' ? 'asc' : 'desc';
+  else posSort = { col, dir: col === 0 ? 'asc' : 'desc' };
+  if(posDados) renderizarTabelaPosicao(posDados);
+}
+
+function togglePosGrupoTab(nome){
+  posGrupoAberto[nome] = !posGrupoAberto[nome];
+  if(posDados) renderizarTabelaPosicao(posDados);
+}
 
 function renderizarTabelaPosicao(posicao){
   const el = document.getElementById('pos-tabela');
@@ -5003,16 +5002,29 @@ function renderizarTabelaPosicao(posicao){
   posDados = posicao;
   const { fiis, acoes, tirFiis, tirAcoes, tirTotal } = posicao;
   const nf2 = v => Math.abs(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const nf0 = v => Math.abs(Math.round(v)).toLocaleString('pt-BR');
   // Negativos sempre entre parênteses; só os percentuais usam o sinal de menos.
   const fmt2 = v => v < 0 ? '(' + nf2(v) + ')' : nf2(v);
-  const fmt0 = v => Math.round(v) < 0 ? '(' + nf0(v) + ')' : nf0(v);
   const pct = v => (v >= 0 ? '+' : '-') + Math.abs(v).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%';
   const tirTxt = v => v === null || v === undefined ? '—' : (v > 999 ? '>999%' : pct(v));
   const cor = v => v < 0 ? 'var(--red)' : 'var(--green)';
   const corTir = v => (v === null || v === undefined) ? 'var(--muted)' : cor(v);
 
   const ativas = lista => lista.filter(p => p.quantidade > 0);
+  const acessores = [
+    p => p.ticker, p => p.quantidade, p => p.precoMedio, p => p.cotacaoAtual,
+    p => p.cotacaoAtual - p.precoMedio,
+    p => p.precoMedio > 0 ? (p.cotacaoAtual - p.precoMedio) / p.precoMedio : 0,
+    p => p.investido, p => p.valorAtual, p => p.rentabilidade,
+    p => p.tir === null || p.tir === undefined ? -Infinity : p.tir
+  ];
+  const ordena = lista => {
+    if(posSort.col === null) return lista;
+    const f = acessores[posSort.col], m = posSort.dir === 'desc' ? -1 : 1;
+    return [...lista].sort((a, b) => {
+      const x = f(a), y = f(b);
+      return (typeof x === 'string' ? x.localeCompare(y) : (x - y)) * m;
+    });
+  };
 
   function linhaAtivo(p){
     const delta = p.cotacaoAtual - p.precoMedio;
@@ -5033,20 +5045,21 @@ function renderizarTabelaPosicao(posicao){
   }
 
   function blocoGrupo(nome, lista, tirGrupo){
-    const l = ativas(lista);
+    const l = ordena(ativas(lista));
     if(l.length === 0) return '';
+    const aberto = posGrupoAberto[nome];
     const inv = l.reduce((s, p) => s + p.investido, 0);
     const pos = l.reduce((s, p) => s + p.valorAtual, 0);
     const rent = inv > 0 ? ((pos - inv) / inv) * 100 : 0;
-    return `<tr class="pos-tab-grupo">
-      <td>${nome}</td><td></td><td></td><td></td>
-      <td>${fmt0(pos - inv)}</td>
+    return `<tr class="pos-tab-grupo" onclick="togglePosGrupoTab('${nome}')">
+      <td><span class="pos-seta">${aberto ? '▾' : '▸'}</span> ${nome}</td><td></td><td></td><td></td>
+      <td>${fmt2(pos - inv)}</td>
       <td>${pct(rent)}</td>
-      <td>${fmt0(inv)}</td>
-      <td>${fmt0(pos)}</td>
+      <td>${fmt2(inv)}</td>
+      <td>${fmt2(pos)}</td>
       <td>${pct(rent)}</td>
       <td>${tirTxt(tirGrupo)}</td>
-    </tr>` + l.map(linhaAtivo).join('');
+    </tr>` + (aberto ? l.map(linhaAtivo).join('') : '');
   }
 
   const corpo = blocoGrupo('FIIs', fiis, tirFiis) + blocoGrupo('Ações', acoes, tirAcoes);
@@ -5058,18 +5071,18 @@ function renderizarTabelaPosicao(posicao){
   const rentT = invT > 0 ? ((posT - invT) / invT) * 100 : 0;
 
   el.innerHTML = `<div class="pos-tab-scroll"><table class="pos-tab">
-    <thead><tr><th>Ativo</th><th>#</th><th>PM</th><th>Mercado</th><th>Δ</th><th>Δ%</th><th>Investido</th><th>Posição</th><th>Rent.</th><th>TIR</th></tr></thead>
+    <thead><tr>${['Ativo', '#', 'PM', 'Mercado', 'Δ', 'Δ%', 'Investido', 'Posição', 'Rent.', 'TIR'].map((t, i) => `<th onclick="ordenarPos(${i})">${t}${posSort.col === i ? (posSort.dir === 'desc' ? ' ▼' : ' ▲') : ''}</th>`).join('')}</tr></thead>
     <tbody>${corpo}</tbody>
-    <tfoot><tr class="pos-tab-total"><td>Total</td><td></td><td></td><td></td><td>${fmt0(posT - invT)}</td><td>${pct(rentT)}</td><td>${fmt0(invT)}</td><td>${fmt0(posT)}</td><td>${pct(rentT)}</td><td>${tirTxt(tirTotal)}</td></tr></tfoot>
+    <tfoot><tr class="pos-tab-total"><td>Total</td><td></td><td></td><td></td><td>${fmt2(posT - invT)}</td><td>${pct(rentT)}</td><td>${fmt2(invT)}</td><td>${fmt2(posT)}</td><td>${pct(rentT)}</td><td>${tirTxt(tirTotal)}</td></tr></tfoot>
   </table></div>`;
 
-  if(!posAtivoSel || !todas.some(p => p.ticker === posAtivoSel)) posAtivoSel = todas.length ? todas[0].ticker : null;
+  if(posAtivoSel && !todas.some(p => p.ticker === posAtivoSel)) posAtivoSel = null;
   document.querySelectorAll('.pos-tab-item').forEach(tr => tr.classList.toggle('pos-sel', tr.dataset.ticker === posAtivoSel));
   renderizarGraficosAtivo();
 }
 
 function selecionarAtivoPos(ticker){
-  posAtivoSel = ticker;
+  posAtivoSel = posAtivoSel === ticker ? null : ticker;
   document.querySelectorAll('.pos-tab-item').forEach(tr => tr.classList.toggle('pos-sel', tr.dataset.ticker === ticker));
   renderizarGraficosAtivo();
 }
@@ -5078,16 +5091,19 @@ function selecionarAtivoPos(ticker){
 // + cotações guardadas (histórico diário, quando existir) + cotação de hoje; (2) posição
 // acumulada (área, em cotas) e volume comprado por mês (colunas, em cotas).
 async function renderizarGraficosAtivo(){
-  const tit1 = document.getElementById('pos-ativo-titulo1');
-  const tit2 = document.getElementById('pos-ativo-titulo2');
   const hint = document.getElementById('pos-ativo-hint');
-  if(!posDados || !posAtivoSel || typeof Chart === 'undefined') return;
+  const cards = document.getElementById('pos-ativo-cards');
+  if(!cards) return;
+  if(!posDados || !posAtivoSel || typeof Chart === 'undefined'){ cards.style.display = 'none'; return; }
   const ticker = posAtivoSel;
-  if(tit1) tit1.textContent = ticker + ' — preço da cota';
-  if(tit2) tit2.textContent = ticker + ' — posição acumulada e volume comprado';
+  cards.style.display = '';
 
   const todas = [...posDados.fiis, ...posDados.acoes];
   const ativo = todas.find(p => p.ticker === ticker);
+  document.getElementById('pos-card-ticker').textContent = ticker;
+  const cotEl = document.getElementById('pos-card-cotacao');
+  cotEl.textContent = 'R$ ' + (ativo ? ativo.cotacaoAtual : 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  cotEl.onclick = () => editarCotacao(ticker, ativo ? ativo.cotacaoAtual : 0);
   const lancs = (posDados.lancs || []).filter(l => l.ticker === ticker && (l.tipo === 'Compra' || l.tipo === 'Venda'))
     .sort((a, b) => a.data_hora.localeCompare(b.data_hora));
 
@@ -5125,20 +5141,21 @@ async function renderizarGraficosAtivo(){
       data: {
         labels: labels1,
         datasets: [
-          { label: 'Preço negociado (compras/vendas)', data: dNeg, borderColor: '#E8622C', backgroundColor: '#E8622C', pointRadius: 4, tension: 0.2, spanGaps: true },
-          { label: 'Cotação', data: dCot, borderColor: '#7A3B4A', backgroundColor: '#7A3B4A', borderDash: [5, 4], pointRadius: 3, tension: 0.2, spanGaps: true }
+          { label: 'Preço negociado (compras/vendas)', data: dNeg, borderColor: '#E8622C', backgroundColor: '#E8622C', pointRadius: 4, tension: 0.2, spanGaps: true, datalabels: { color: '#F2A37A', anchor: 'end', align: 'top', offset: 3, formatter: fmtBR } },
+          { label: 'Cotação', data: dCot, borderColor: '#7A3B4A', backgroundColor: '#7A3B4A', borderDash: [5, 4], pointRadius: 3, tension: 0.2, spanGaps: true, datalabels: { color: '#D19FAB', anchor: 'end', align: 'bottom', offset: 3, formatter: fmtBR } }
         ]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        layout: { padding: { top: 22, right: 14, bottom: 6 } },
         scales: {
           x: { ticks: { color: '#9A9AA0', font: { size: 9 }, maxRotation: 60, autoSkip: true }, grid: { display: false } },
           y: { ticks: { color: '#9A9AA0', font: { size: 9 }, callback: v => fmtBR(v) }, grid: { color: '#2A2A2E' } }
         },
         plugins: {
           legend: { labels: { color: '#F2F0EC', font: { size: 10.5 } } },
-          datalabels: { display: false },
+          datalabels: { clip: false, font: { size: 8, weight: '600' } },
           tooltip: { callbacks: { label: c => c.dataset.label + ': R$ ' + fmtBR(c.parsed.y) } }
         }
       },
@@ -5205,7 +5222,7 @@ async function renderizarGraficosAtivo(){
     });
   }
 
-  if(hint) hint.textContent = 'Clique num ativo da tabela pra trocar. Ainda não guardamos o histórico diário de cotações: até lá, o preço da cota usa os preços das suas compras/vendas e a cotação de hoje.';
+  if(hint) hint.textContent = 'Toca no ativo de novo pra fechar. Ainda não guardamos o histórico diário de cotações: até lá, o preço da cota usa os preços das suas compras/vendas e a cotação de hoje.';
 }
 
 // Evolução do patrimônio (Caixa líquido + Investimentos) nos últimos 12 fins de mês + hoje.
