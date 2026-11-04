@@ -7,6 +7,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0B0B0C">
 <title>PittApp</title>
+<link rel="icon" type="image/png" href="icons/icon-512.png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
 <style>
   :root{
     --bg:#0B0B0C; --panel:#151517; --panel-2:#1C1C1F; --line:#2A2A2E; --text:#F2F0EC; --muted:#9A9AA0;
@@ -214,6 +216,10 @@
   .pos-item-top{display:flex;justify-content:space-between;align-items:center;}
   .pos-ticker{font-weight:700;font-size:14px;color:var(--orange);}
   .pos-valor-atual{font-weight:700;font-size:14px;cursor:pointer;text-decoration:underline dotted;color:var(--orange);}
+  .pos-topo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:center;}
+  @media (max-width:760px){ .pos-topo{grid-template-columns:1fr;} }
+  .pos-clic{cursor:pointer;}
+  .pos-clic.pos-linha-sel{outline:1px solid var(--orange);}
   .pos-mini-card{background:var(--panel-2);border-radius:12px;padding:14px;margin-top:12px;}
   .pos-tab th{cursor:pointer;}
   .pos-tab tr.pos-tab-grupo{cursor:pointer;}
@@ -620,6 +626,7 @@
     <div class="card" id="card-patrimonio-total">
       <h1 class="r-title">Patrimônio Total</h1>
       <div id="r-total-geral" class="r-total"></div>
+      <div id="r-total-linhas"></div>
     </div>
   </div>
 
@@ -1161,6 +1168,8 @@
         <div class="destaque-total" id="pos-total">...</div>
       </div>
 
+      <div class="pos-topo">
+      <div class="pos-topo-esq">
       <div class="moeda-grupo" style="margin-bottom:10px;">
         <div class="moeda-total-linha">
           <span>Saldo Investimento</span>
@@ -1168,14 +1177,14 @@
         </div>
       </div>
 
-      <div class="moeda-grupo" id="pos-fiis-wrap" style="margin-bottom:10px;">
+      <div class="moeda-grupo pos-clic" id="pos-fiis-wrap" onclick="selecionarPizza('fiis')" style="margin-bottom:10px;">
         <div class="moeda-total-linha">
           <span>FIIs</span>
           <span id="pos-total-fiis">...</span>
         </div>
       </div>
 
-      <div class="moeda-grupo" id="pos-acoes-wrap" style="margin-bottom:10px;">
+      <div class="moeda-grupo pos-clic" id="pos-acoes-wrap" onclick="selecionarPizza('acoes')" style="margin-bottom:10px;">
         <div class="moeda-total-linha">
           <span>Ações</span>
           <span id="pos-total-acoes">...</span>
@@ -1183,6 +1192,12 @@
       </div>
 
       <div id="pos-saldo-contas"></div>
+      </div>
+      <div class="pos-topo-dir" id="pos-pizza-wrap">
+        <p class="chart-titulo" id="pos-pizza-titulo" style="margin:0 0 4px;">Composição do patrimônio</p>
+        <div style="position:relative;height:300px;"><canvas id="pos-chart-pizza"></canvas></div>
+      </div>
+      </div>
 
       <div id="pos-lista"></div>
       <p class="r-hint">Toca num ativo da tabela pra abrir o preço da cota e a posição acumulada dele. No card, toca na cotação pra ajustar à mão, se precisar (a próxima atualização automática sobrescreve). Investido/Rendimento são acumulados desde o início.</p>
@@ -1963,6 +1978,12 @@ async function carregarResumo(){
   });
   totalEl.textContent = fmt(totalGeral);
   totalEl.style.color = 'var(--orange)';
+  // Pittchas (conta exclusiva da Casa) fica fora dos grupos do Resumo; entra só como linha
+  // própria no Patrimônio Total.
+  const { data: contaPitt } = await sb.from('contas').select('id').eq('nome', 'Pittchas').eq('ativa', true).maybeSingle();
+  totalPittchas = contaPitt
+    ? lancs.filter(l => l.conta_id === contaPitt.id).reduce((s, l) => s + (l.fluxo === 'entrada' ? 1 : -1) * Number(l.valor) * taxaBRL(l.moeda || 'BRL'), 0)
+    : 0;
   totalPatrimonioMatheus = totalGeral;
   atualizarPatrimonioTotalGeral();
 
@@ -2028,12 +2049,18 @@ function toggleGrupo(i){
 
 let totalPatrimonioMatheus = null;
 let totalPatrimonioMichelle = null;
+let totalPittchas = 0;
 function atualizarPatrimonioTotalGeral(){
   const el = document.getElementById('r-total-geral');
   if(!el) return;
   if(totalPatrimonioMatheus == null || totalPatrimonioMichelle == null) return;
-  el.textContent = fmt(totalPatrimonioMatheus + totalPatrimonioMichelle);
+  el.textContent = fmt(totalPatrimonioMatheus + totalPatrimonioMichelle + totalPittchas);
   el.style.color = 'var(--orange)';
+  const linhas = document.getElementById('r-total-linhas');
+  if(linhas){
+    const linha = (nome, v) => `<div class="grupo"><div class="grupo-head" style="cursor:default;"><span class="grupo-nome">${nome}</span><span class="grupo-valor" style="color:${v < 0 ? 'var(--red)' : 'var(--gray1)'};">${fmt(v)}</span></div></div>`;
+    linhas.innerHTML = linha('Matheus', totalPatrimonioMatheus) + linha('Michelle', totalPatrimonioMichelle) + linha('Pittchas', totalPittchas);
+  }
 }
 
 // ---------- Patrimônio Michelle (mesma lógica do Resumo, só que filtrado pelas contas dela) ----------
@@ -4953,8 +4980,13 @@ async function carregarPosicao(){
   const secMatheus = document.getElementById('pos-secoes-matheus');
   if(secMatheus){
     secMatheus.style.display = ehMichelle() ? 'none' : '';
+    const pizzaWrap = document.getElementById('pos-pizza-wrap');
+    if(pizzaWrap) pizzaWrap.style.display = ehMichelle() ? 'none' : '';
     if(!ehMichelle()){
       renderizarTabelaPosicao(posicao);
+      posLancsPromise = buscarLancsPat();
+      posLancsPromise.catch(() => {});
+      carregarPizzaPatrimonio(posicao, saldoInvestimento).catch(e => console.warn('Pizza:', e.message));
       carregarEvolucaoPatrimonio(posicao).catch(e => { const h = document.getElementById('pos-chart-hint'); if(h) h.textContent = 'Erro no gráfico: ' + e.message; });
     }
   }
@@ -5237,14 +5269,9 @@ async function carregarEvolucaoPatrimonio(posicao){
   const grupoDe = {};
   (contas || []).forEach(c => { grupoDe[c.id] = c.grupo_resumo; });
 
-  let lancs = [];
-  const PAGE = 1000;
-  for(let from = 0; ; from += PAGE){
-    const { data: pagina, error } = await sb.from('lancamentos').select('conta_id, fluxo, valor, moeda, data_hora, categoria_id, dono').order('id').range(from, from + PAGE - 1);
-    if(error){ if(hint) hint.textContent = 'Erro ao carregar o histórico: ' + error.message; return; }
-    lancs = lancs.concat(pagina);
-    if(pagina.length < PAGE) break;
-  }
+  let lancs;
+  try{ lancs = await (posLancsPromise || buscarLancsPat()); }
+  catch(e){ if(hint) hint.textContent = 'Erro ao carregar o histórico: ' + e.message; return; }
 
   const [catSaidaId, catEntradaId, ativosRes, cotRes, cfgRes, cotHoje, btgAberto] = await Promise.all([
     categoriaFiisAcoesId('saida'),
@@ -5364,6 +5391,120 @@ async function carregarEvolucaoPatrimonio(posicao){
     });
   }
   if(hint) hint.textContent = 'Patrimônio = Caixa líquido + Investimentos. Meses anteriores: saldos na taxa média do mês e FIIs/Ações a custo (ainda não guardamos histórico de cotações); "Hoje" bate com o Resumo (FIIs/Ações a mercado, BTG+ Michelle a receber incluso no caixa).';
+}
+
+// ---------- Pizza: composição do patrimônio (e, ao clicar em FIIs/Ações, por ativo) ----------
+
+let posLancsPromise = null;
+let posChartPizza = null;
+let posPizzaDados = null;
+let posPizzaModo = 'geral';
+
+async function buscarLancsPat(){
+  let lancs = [];
+  const PAGE = 1000;
+  for(let from = 0; ; from += PAGE){
+    const { data: pagina, error } = await sb.from('lancamentos').select('conta_id, fluxo, valor, moeda, data_hora, categoria_id, dono').order('id').range(from, from + PAGE - 1);
+    if(error) throw new Error(error.message);
+    lancs = lancs.concat(pagina);
+    if(pagina.length < PAGE) break;
+  }
+  return lancs;
+}
+
+async function carregarPizzaPatrimonio(posicao, saldoInvestimento){
+  const { data: contas } = await sb.from('contas').select('id, nome, grupo_resumo').eq('ativa', true).not('grupo_resumo', 'is', null).neq('titular', 'Michelle');
+  const [lancs, cotHoje, btgAberto] = await Promise.all([
+    posLancsPromise || buscarLancsPat(),
+    buscarCotacoes(),
+    calcularTotalBtgMichelleAberto()
+  ]);
+  const taxa = m => (!m || m === 'BRL') ? 1 : (cotHoje[m] != null ? cotHoje[m] : 1);
+
+  const info = {};
+  (contas || []).forEach(c => { info[c.id] = c; });
+  let caixa = 0, rendaFixa = 0, exterior = 0;
+  lancs.forEach(l => {
+    const c = info[l.conta_id];
+    if(!c) return;
+    const v = (l.fluxo === 'entrada' ? 1 : -1) * Number(l.valor) * taxa(l.moeda);
+    if(c.grupo_resumo === 'Caixa líquido') caixa += v;
+    else if(c.grupo_resumo === 'Investimentos'){
+      if((c.nome || '').toLowerCase().includes('renda fixa')) rendaFixa += v; else exterior += v;
+    }
+  });
+  // Mesma composição do Resumo: BTG+ Michelle a receber entra no caixa; o Saldo Investimento
+  // (caixa dentro da carteira) é somado ao Caixa líquido só nesta visão.
+  caixa += (btgAberto || 0) + (saldoInvestimento || 0);
+
+  const ativos = lista => lista.filter(p => p.quantidade > 0 && p.valorAtual > 0)
+    .map(p => ({ label: p.ticker, v: p.valorAtual })).sort((a, b) => b.v - a.v);
+
+  posPizzaDados = {
+    geral: [
+      { label: 'Caixa líquido', v: caixa },
+      { label: 'FIIs', v: posicao.totalFiis },
+      { label: 'Ações', v: posicao.totalAcoes },
+      { label: 'Renda Fixa', v: rendaFixa },
+      { label: 'Exterior', v: exterior }
+    ],
+    fiis: ativos(posicao.fiis),
+    acoes: ativos(posicao.acoes)
+  };
+  renderizarPizzaPatrimonio();
+}
+
+function selecionarPizza(modo){
+  posPizzaModo = (posPizzaModo === modo) ? 'geral' : modo;
+  renderizarPizzaPatrimonio();
+}
+
+function renderizarPizzaPatrimonio(){
+  const cv = document.getElementById('pos-chart-pizza');
+  if(!cv || !posPizzaDados || typeof Chart === 'undefined') return;
+
+  document.getElementById('pos-fiis-wrap').classList.toggle('pos-linha-sel', posPizzaModo === 'fiis');
+  document.getElementById('pos-acoes-wrap').classList.toggle('pos-linha-sel', posPizzaModo === 'acoes');
+  const titulo = document.getElementById('pos-pizza-titulo');
+  if(titulo) titulo.textContent = posPizzaModo === 'fiis' ? 'FIIs — por ativo' : (posPizzaModo === 'acoes' ? 'Ações — por ativo' : 'Composição do patrimônio');
+
+  const itens = posPizzaDados[posPizzaModo];
+  const base = itens.reduce((s, i) => s + i.v, 0); // total do patrimônio (ou do grupo)
+  const fatias = itens.filter(i => i.v > 0);
+  const paleta = ['#E8622C', '#7A3B4A', '#F2A65A', '#B5654A', '#C98A3E', '#9A5A3A', '#D19FAB', '#808080', '#E97132', '#5CA86B', '#4C8DFF', '#E0B23C'];
+  const fmtK = v => Math.abs(v) >= 1000 ? Math.round(v / 1000) + 'k' : String(Math.round(v));
+  const fmtPct = v => (v * 100).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
+
+  if(posChartPizza){ posChartPizza.destroy(); posChartPizza = null; }
+  if(!fatias.length) return;
+  posChartPizza = new Chart(cv.getContext('2d'), {
+    type: 'pie',
+    data: {
+      labels: fatias.map(f => f.label),
+      datasets: [{ data: fatias.map(f => f.v), backgroundColor: fatias.map((f, i) => paleta[i % paleta.length]), borderColor: '#151517', borderWidth: 2 }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      layout: { padding: { top: 26, bottom: 14, left: 30, right: 30 } },
+      plugins: {
+        legend: { position: 'bottom', labels: { color: '#F2F0EC', font: { size: 10.5 }, boxWidth: 12 } },
+        datalabels: {
+          color: '#F2F0EC',
+          anchor: 'end',
+          align: 'end',
+          offset: 4,
+          clip: false,
+          textAlign: 'center',
+          font: { size: 9, weight: '600' },
+          display: ctx => base > 0 && (ctx.dataset.data[ctx.dataIndex] / base) >= 0.03,
+          formatter: (v) => fmtK(v) + '\n' + fmtPct(v / base)
+        },
+        tooltip: { callbacks: { label: c => ' R$ ' + c.parsed.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' (' + fmtPct(c.parsed / base) + ')' } }
+      }
+    },
+    plugins: (typeof ChartDataLabels !== 'undefined') ? [ChartDataLabels] : []
+  });
 }
 
 // ---------- Histórico de ativos (consulta, edição, exclusão) ----------
