@@ -222,6 +222,7 @@
   .pos-clic.pos-linha-sel{outline:1px solid var(--orange);}
   .pos-mini-card{background:var(--panel-2);border-radius:12px;padding:14px;margin-top:12px;}
   .pos-tab th{cursor:pointer;}
+  .pos-tab th, .pos-tab th:first-child{text-align:center !important;}
   .pos-tab tr.pos-tab-grupo{cursor:pointer;}
   .pos-tab-scroll{overflow-x:auto;border-radius:10px;border:1px solid #fff;}
   .pos-tab{width:100%;min-width:660px;border-collapse:collapse;font-size:11.5px;}
@@ -1195,7 +1196,7 @@
       </div>
       <div class="pos-topo-dir" id="pos-pizza-wrap">
         <p class="chart-titulo" id="pos-pizza-titulo" style="margin:0 0 4px;">Composição do patrimônio</p>
-        <div style="position:relative;height:300px;"><canvas id="pos-chart-pizza"></canvas></div>
+        <div style="position:relative;height:380px;"><canvas id="pos-chart-pizza"></canvas></div>
       </div>
       </div>
 
@@ -5085,8 +5086,8 @@ function renderizarTabelaPosicao(posicao){
     const rent = inv > 0 ? ((pos - inv) / inv) * 100 : 0;
     return `<tr class="pos-tab-grupo" onclick="togglePosGrupoTab('${nome}')">
       <td><span class="pos-seta">${aberto ? '▾' : '▸'}</span> ${nome}</td><td></td><td></td><td></td>
-      <td>${fmt2(pos - inv)}</td>
-      <td>${pct(rent)}</td>
+      <td></td>
+      <td></td>
       <td>${fmt2(inv)}</td>
       <td>${fmt2(pos)}</td>
       <td>${pct(rent)}</td>
@@ -5105,7 +5106,7 @@ function renderizarTabelaPosicao(posicao){
   el.innerHTML = `<div class="pos-tab-scroll"><table class="pos-tab">
     <thead><tr>${['Ativo', '#', 'PM', 'Mercado', 'Δ', 'Δ%', 'Investido', 'Posição', 'Rent.', 'TIR'].map((t, i) => `<th onclick="ordenarPos(${i})">${t}${posSort.col === i ? (posSort.dir === 'desc' ? ' ▼' : ' ▲') : ''}</th>`).join('')}</tr></thead>
     <tbody>${corpo}</tbody>
-    <tfoot><tr class="pos-tab-total"><td>Total</td><td></td><td></td><td></td><td>${fmt2(posT - invT)}</td><td>${pct(rentT)}</td><td>${fmt2(invT)}</td><td>${fmt2(posT)}</td><td>${pct(rentT)}</td><td>${tirTxt(tirTotal)}</td></tr></tfoot>
+    <tfoot><tr class="pos-tab-total"><td>Total</td><td></td><td></td><td></td><td></td><td></td><td>${fmt2(invT)}</td><td>${fmt2(posT)}</td><td>${pct(rentT)}</td><td>${tirTxt(tirTotal)}</td></tr></tfoot>
   </table></div>`;
 
   if(posAtivoSel && !todas.some(p => p.ticker === posAtivoSel)) posAtivoSel = null;
@@ -5486,19 +5487,21 @@ function renderizarPizzaPatrimonio(){
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      layout: { padding: { top: 26, bottom: 14, left: 30, right: 30 } },
+      layout: { padding: { top: 34, bottom: 34, left: 56, right: 56 } },
       plugins: {
-        legend: { position: 'bottom', labels: { color: '#F2F0EC', font: { size: 10.5 }, boxWidth: 12 } },
+        legend: { display: false },
         datalabels: {
+          // Fatias grandes: rótulo dentro da pizza; fatias pequenas: fora. 'auto' esconde
+          // o que ficaria sobreposto (o valor completo continua no tooltip).
           color: '#F2F0EC',
-          anchor: 'end',
-          align: 'end',
-          offset: 4,
           clip: false,
           textAlign: 'center',
-          font: { size: 9, weight: '600' },
-          display: ctx => base > 0 && (ctx.dataset.data[ctx.dataIndex] / base) >= 0.03,
-          formatter: (v) => fmtK(v) + '\n' + fmtPct(v / base)
+          font: { size: 11, weight: '700' },
+          display: ctx => (base > 0 && (ctx.dataset.data[ctx.dataIndex] / base) >= 0.02) ? 'auto' : false,
+          anchor: ctx => (ctx.dataset.data[ctx.dataIndex] / base) >= 0.1 ? 'center' : 'end',
+          align: ctx => (ctx.dataset.data[ctx.dataIndex] / base) >= 0.1 ? 'center' : 'end',
+          offset: ctx => (ctx.dataset.data[ctx.dataIndex] / base) >= 0.1 ? 0 : 6,
+          formatter: (v, ctx) => ctx.chart.data.labels[ctx.dataIndex] + '\n' + fmtK(v) + '\n' + fmtPct(v / base)
         },
         tooltip: { callbacks: { label: c => ' R$ ' + c.parsed.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' (' + fmtPct(c.parsed / base) + ')' } }
       }
