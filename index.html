@@ -693,10 +693,11 @@
           <select id="dre-chart-fluxo" onchange="onDreChartFluxoChange()">
             <option value="saida">Despesas</option>
             <option value="entrada">Receitas</option>
+            <option value="resultado">Resultado (Receitas − Despesas)</option>
           </select>
         </div>
       </div>
-      <div class="lf-row">
+      <div class="lf-row" id="dre-chart-linha-grupo">
         <div class="field">
           <label>Grupo</label>
           <select id="dre-chart-grupo" onchange="onDreChartGrupoChange()"></select>
@@ -1195,8 +1196,8 @@
       <div id="pos-saldo-contas"></div>
       </div>
       <div class="pos-topo-dir" id="pos-pizza-wrap">
-        <p class="chart-titulo" id="pos-pizza-titulo" style="margin:0 0 4px;">Composição do patrimônio</p>
-        <div style="position:relative;height:380px;"><canvas id="pos-chart-pizza"></canvas></div>
+        <p class="chart-titulo" id="pos-pizza-titulo" style="margin:0 0 4px;position:relative;z-index:2;">Composição do patrimônio</p>
+        <div style="position:relative;height:440px;overflow:hidden;"><canvas id="pos-chart-pizza"></canvas></div>
       </div>
       </div>
 
@@ -2054,14 +2055,20 @@ let totalPittchas = 0;
 function atualizarPatrimonioTotalGeral(){
   const el = document.getElementById('r-total-geral');
   if(!el) return;
+  const linha = (nome, v) => `<div class="grupo"><div class="grupo-head" style="cursor:default;"><span class="grupo-nome">${nome}</span><span class="grupo-valor" style="color:${v < 0 ? 'var(--red)' : 'var(--gray1)'};">${fmt(v)}</span></div></div>`;
+  const linhas = document.getElementById('r-total-linhas');
+  if(ehMichelle()){
+    // Michelle não enxerga o patrimônio do Matheus: o total dela é o próprio + Pittchas
+    if(totalPatrimonioMichelle == null) return;
+    el.textContent = fmt(totalPatrimonioMichelle + totalPittchas);
+    el.style.color = 'var(--orange)';
+    if(linhas) linhas.innerHTML = linha('Michelle', totalPatrimonioMichelle) + linha('Pittchas', totalPittchas);
+    return;
+  }
   if(totalPatrimonioMatheus == null || totalPatrimonioMichelle == null) return;
   el.textContent = fmt(totalPatrimonioMatheus + totalPatrimonioMichelle + totalPittchas);
   el.style.color = 'var(--orange)';
-  const linhas = document.getElementById('r-total-linhas');
-  if(linhas){
-    const linha = (nome, v) => `<div class="grupo"><div class="grupo-head" style="cursor:default;"><span class="grupo-nome">${nome}</span><span class="grupo-valor" style="color:${v < 0 ? 'var(--red)' : 'var(--gray1)'};">${fmt(v)}</span></div></div>`;
-    linhas.innerHTML = linha('Matheus', totalPatrimonioMatheus) + linha('Michelle', totalPatrimonioMichelle) + linha('Pittchas', totalPittchas);
-  }
+  if(linhas) linhas.innerHTML = linha('Matheus', totalPatrimonioMatheus) + linha('Michelle', totalPatrimonioMichelle) + linha('Pittchas', totalPittchas);
 }
 
 // ---------- Patrimônio Michelle (mesma lógica do Resumo, só que filtrado pelas contas dela) ----------
@@ -2148,6 +2155,13 @@ async function carregarPatrimonioMichelle(){
   totalEl.textContent = fmt(totalGeral);
   totalEl.style.color = 'var(--orange)';
   totalPatrimonioMichelle = totalGeral;
+  if(ehMichelle()){
+    // Pittchas foi liberada pra ela: busca o saldo (RLS só devolve o que ela pode ver)
+    const { data: contaPitt } = await sb.from('contas').select('id').eq('nome', 'Pittchas').maybeSingle();
+    totalPittchas = contaPitt
+      ? lancs.filter(l => l.conta_id === contaPitt.id).reduce((s, l) => s + (l.fluxo === 'entrada' ? 1 : -1) * Number(l.valor) * taxaBRL(l.moeda || 'BRL'), 0)
+      : 0;
+  }
   atualizarPatrimonioTotalGeral();
 
   if(ordemGrupo.length === 0){
@@ -2542,7 +2556,8 @@ function cliqueGraficoDre(els){
 }
 
 function dreNoPorPath(p){
-  const l1 = dreModelo.l1s.find(x => x.fluxo === p.fluxo);
+  if(p.fluxo === 'resultado') return { l2s: dreModelo.l1s };
+  const l1 =dreModelo.l1s.find(x => x.fluxo === p.fluxo);
   if(!l1) return null;
   if(!p.l2) return l1;
   const l2 = l1.l2s.find(x => x.desc === p.l2);
@@ -2574,7 +2589,8 @@ function renderizarAnalitico(){
   const itens = dreItensDoNo(node)
     .filter(it => dreAnalSel.mes === null ? it.m <= dreModelo.mesIdx : it.m === dreAnalSel.mes)
     .sort((a, b) => b.dt.localeCompare(a.dt));
-  const nome = [dreModelo.l1s.find(x => x.fluxo === dreAnalSel.fluxo).desc, dreAnalSel.l2, dreAnalSel.leaf].filter(Boolean).join(' › ');
+  const l1Sel = dreModelo.l1s.find(x => x.fluxo === dreAnalSel.fluxo);
+  const nome = [l1Sel ? l1Sel.desc : 'Resultado (Receitas e Despesas)', dreAnalSel.l2, dreAnalSel.leaf].filter(Boolean).join(' › ');
   const periodo = dreAnalSel.mes === null ? 'YTD até ' + NOMES_MES_CURTO[dreModelo.mesIdx] + sufAno : NOMES_MES_CURTO[dreAnalSel.mes] + sufAno;
   sub.textContent = nome + ' — ' + periodo + ' · ' + itens.length + ' lançamento' + (itens.length === 1 ? '' : 's');
   tbody.innerHTML = itens.length ? itens.map(it => `<tr>
@@ -2598,11 +2614,13 @@ function popularFiltrosDreChart(){
 function onDreChartFluxoChange(){
   const fluxo = document.getElementById('dre-chart-fluxo').value;
   const grupoSel = document.getElementById('dre-chart-grupo');
+  const linhaGrupo = document.getElementById('dre-chart-linha-grupo');
+  if(linhaGrupo) linhaGrupo.style.display = fluxo === 'resultado' ? 'none' : '';
   const anterior = grupoSel.value;
   const l1 = dreModelo.l1s.find(r => r.fluxo === fluxo);
   const grupos = l1 ? l1.l2s : [];
-  grupoSel.innerHTML = grupos.map(g => `<option value="${g.desc}">${g.desc}</option>`).join('');
-  if(grupos.some(g => g.desc === anterior)) grupoSel.value = anterior;
+  grupoSel.innerHTML = '<option value="">Todos os grupos</option>' + grupos.map(g => `<option value="${g.desc}">${g.desc}</option>`).join('');
+  if(anterior === '' || grupos.some(g => g.desc === anterior)) grupoSel.value = anterior;
   onDreChartGrupoChange();
 }
 
@@ -2616,7 +2634,24 @@ function onDreChartGrupoChange(){
   const subs = g ? g.leaves : [];
   subSel.innerHTML = '<option value="">Todos (grupo inteiro)</option>' + subs.map(s => `<option value="${s.desc}">${s.desc}</option>`).join('');
   if(subs.some(s => s.desc === anterior)) subSel.value = anterior;
+  subSel.disabled = !g;
   atualizarGraficosDre();
+}
+
+// Nó (com orc/real mensais, sinal original: receita +, despesa −) que alimenta os gráficos:
+// um subgrupo, um grupo, todos os grupos do fluxo, ou o Resultado (receitas + despesas).
+function dreNoGrafico(fluxo, grupoDesc, subDesc){
+  if(fluxo === 'resultado'){
+    const r = dreModelo.l1s.find(x => x.fluxo === 'entrada'), d = dreModelo.l1s.find(x => x.fluxo === 'saida');
+    const orc = dreSomaArr(r.orc, d.orc), real = dreSomaArr(r.real, d.real);
+    return { orc, real, orcAno: dreSoma(orc, 11), orcYtd: dreSoma(orc, dreModelo.mesIdx), realYtd: dreSoma(real, dreModelo.mesIdx) };
+  }
+  const l1 = dreModelo.l1s.find(x => x.fluxo === fluxo);
+  if(!l1) return null;
+  if(!grupoDesc) return l1;
+  const g = l1.l2s.find(x => x.desc === grupoDesc);
+  if(!g) return null;
+  return (subDesc && g.leaves.find(s => s.desc === subDesc)) || g;
 }
 
 const fmtLblDre = (v, ctx) => {
@@ -2628,12 +2663,12 @@ const fmtLblDre = (v, ctx) => {
 
 // Posição do rótulo no acumulado: a série mais alta no mês leva o rótulo pra cima,
 // a mais baixa leva pra baixo — evita rótulos sobrepostos quando os valores estão próximos.
+let dreMesProjIdx = 12;
 const alignAcumDre = qual => ctx => {
   const ds = ctx.chart.data.datasets;
   const i = ctx.dataIndex;
   const o = ds[0].data[i];
-  const rv = ds[1].data[i];
-  const r = (rv !== null && rv !== undefined) ? rv : ds[2].data[i];
+  const r = ds[1].data[i];
   if(o === null || o === undefined || r === null || r === undefined) return qual === 'orc' ? 'bottom' : 'top';
   const orcAcima = o >= r;
   return qual === 'orc' ? (orcAcima ? 'top' : 'bottom') : (orcAcima ? 'bottom' : 'top');
@@ -2646,14 +2681,12 @@ function atualizarGraficosDre(){
   const grupoDesc = document.getElementById('dre-chart-grupo').value;
   const subDesc = document.getElementById('dre-chart-subgrupo').value;
 
-  const l1 = dreModelo.l1s.find(r => r.fluxo === fluxo);
-  const grupo = l1 ? l1.l2s.find(g => g.desc === grupoDesc) : null;
-  if(!grupo) return;
-  const sub = subDesc ? grupo.leaves.find(s => s.desc === subDesc) : null;
-  const node = sub || grupo;
+  const node = dreNoGrafico(fluxo, grupoDesc, subDesc);
+  if(!node) return;
   const mesSel = dreModelo.mesIdx;
 
-  // Despesas são negativas nos dados; nos gráficos aparecem positivas.
+  // Despesas são negativas nos dados; nos gráficos aparecem positivas. O Resultado
+  // (receitas − despesas) mantém o sinal: positivo = sobra, negativo = déficit.
   const sgn = fluxo === 'saida' ? -1 : 1;
   const orcadoMeses = node.orc.map(v => v * sgn);
   const realizadoMeses = node.real.map((v, i) => i <= mesSel ? v * sgn : null);
@@ -2723,31 +2756,26 @@ function atualizarGraficosDre(){
   // Projetado (pontilhado) = lançamentos já existentes nos meses seguintes
   // (ex.: parcelas da Fatura BTG); sem lançamentos, a linha fica fixa até dezembro.
   const fmtLbl = v => (v === null || v === undefined) ? '' : fmtDre(v);
-  let accOrcado = 0, accRealizado = 0, accProj = 0;
-  const orcadoAcumulado = [], realizadoAcumulado = [], projetadoAcumulado = [];
+  // Uma série só: meses já virados = Realizado (linha cheia); o mês corrente e os seguintes
+  // = Projetado (trecho pontilhado, ponto vazado) até o mês virar. Nunca os dois no mesmo mês.
+  const hoje = new Date();
+  dreMesProjIdx = hoje.getFullYear() === DRE_ANO ? hoje.getMonth() : (hoje.getFullYear() > DRE_ANO ? 12 : 0);
+  let accOrcado = 0, accReal = 0;
+  const orcadoAcumulado = [], realizadoAcumulado = [];
   for(let i = 0; i < 12; i++){
     accOrcado += orcadoMeses[i];
     orcadoAcumulado.push(accOrcado);
-    if(i <= mesSel){
-      accRealizado += realizadoFull[i];
-      accProj = accRealizado;
-      realizadoAcumulado.push(accRealizado);
-      projetadoAcumulado.push(i === mesSel ? accProj : null);
-    } else {
-      accProj += realizadoFull[i];
-      realizadoAcumulado.push(null);
-      projetadoAcumulado.push(accProj);
-    }
+    accReal += realizadoFull[i];
+    realizadoAcumulado.push(accReal);
   }
 
-  const todosAcum = [...orcadoAcumulado, ...realizadoAcumulado, ...projetadoAcumulado].filter(v => v !== null);
+  const todosAcum = [...orcadoAcumulado, ...realizadoAcumulado];
   const yMaxAcum = Math.max(0, ...todosAcum);
   const yMinAcum = Math.min(0, ...todosAcum);
   if(dreChartAcumulado){
     dreChartAcumulado.data.labels = labels;
     dreChartAcumulado.data.datasets[0].data = orcadoAcumulado;
     dreChartAcumulado.data.datasets[1].data = realizadoAcumulado;
-    dreChartAcumulado.data.datasets[2].data = projetadoAcumulado;
     dreChartAcumulado.options.scales.y.suggestedMax = yMaxAcum + 0.14 * Math.abs(yMaxAcum);
     dreChartAcumulado.options.scales.y.suggestedMin = Math.min(0, yMinAcum) - 0.1 * Math.abs(yMaxAcum);
     dreChartAcumulado.update();
@@ -2771,27 +2799,17 @@ function atualizarGraficosDre(){
             datalabels: { color: '#D19FAB', anchor: 'end', align: alignAcumDre('orc'), offset: 3, formatter: fmtLbl }
           },
           {
-            label: 'Realizado',
+            label: 'Realizado (pontilhado = projetado)',
             data: realizadoAcumulado,
             borderColor: corRealizado,
             backgroundColor: 'transparent',
             fill: false,
             tension: 0.25,
             pointRadius: 3,
-            pointBackgroundColor: corRealizado,
+            pointBackgroundColor: ctx => ctx.dataIndex >= dreMesProjIdx ? '#151517' : corRealizado,
+            pointBorderColor: corRealizado,
+            segment: { borderDash: ctx => ctx.p1DataIndex >= dreMesProjIdx ? [3, 4] : undefined },
             datalabels: { color: '#F2A37A', anchor: 'end', align: alignAcumDre('real'), offset: 3, formatter: fmtLbl }
-          },
-          {
-            label: 'Projetado',
-            data: projetadoAcumulado,
-            borderColor: corRealizado,
-            backgroundColor: 'transparent',
-            borderDash: [3, 4],
-            fill: false,
-            tension: 0.25,
-            pointRadius: 2,
-            pointBackgroundColor: corRealizado,
-            datalabels: { color: '#F2A37A', anchor: 'end', align: alignAcumDre('real'), offset: 3, formatter: (v, ctx) => ctx.dataIndex <= dreModelo.mesIdx ? '' : fmtLbl(v) }
           }
         ]
       },
@@ -4557,7 +4575,7 @@ function aplicarRestricaoPerfil(){
     const cardDele = document.getElementById('card-patrimonio-matheus');
     const cardTotal = document.getElementById('card-patrimonio-total');
     if(cardDele) cardDele.style.display = 'none';
-    if(cardTotal) cardTotal.style.display = 'none';
+    if(cardTotal) cardTotal.style.display = '';
     if(cardDela){
       const titulo = document.getElementById('titulo-patrimonio-michelle');
       if(titulo) titulo.textContent = 'Patrimônio';
@@ -4769,7 +4787,9 @@ async function calcularSaldoInvestimentoMichelle(lancsPre){
 }
 
 function ehFii(ticker){
-  return ticker.endsWith('11');
+  // Units de bancos/empresas (terminam em 11 mas são Ações) ficam de fora
+  const EXCECOES_ACAO = ['BPAC11'];
+  return ticker.endsWith('11') && !EXCECOES_ACAO.includes(ticker);
 }
 
 function fmtR$(v){
@@ -5002,9 +5022,6 @@ async function carregarPosicao(){
     ? '<p style="color:var(--red);font-size:12.5px;text-align:center;padding:8px 4px;">⚠ Sem cotação para: ' + semCotacao.join(', ') + '. O valor atual deles está zerado no patrimônio.</p>'
     : '';
   listaEl.innerHTML = avisoCot;
-  if(custosGerais > 0){
-    listaEl.innerHTML += '<p class="r-hint">Taxas/multas gerais (sem ticker): R$ ' + custosGerais.toLocaleString('pt-BR',{minimumFractionDigits:2}) + '</p>';
-  }
 }
 
 // ---------- Posição: tabela resumida + evolução do patrimônio ----------
@@ -5487,21 +5504,24 @@ function renderizarPizzaPatrimonio(){
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      layout: { padding: { top: 34, bottom: 34, left: 56, right: 56 } },
+      layout: { padding: { top: 56, bottom: 44, left: 70, right: 70 } },
       plugins: {
         legend: { display: false },
         datalabels: {
-          // Fatias grandes: rótulo dentro da pizza; fatias pequenas: fora. 'auto' esconde
-          // o que ficaria sobreposto (o valor completo continua no tooltip).
+          // Todas as fatias têm rótulo. Grandes (>=10%): dentro, em 3 linhas. Pequenas: fora,
+          // em 1 linha, alternando a distância entre fatias vizinhas para não se sobreporem.
           color: '#F2F0EC',
           clip: false,
           textAlign: 'center',
           font: { size: 11, weight: '700' },
-          display: ctx => (base > 0 && (ctx.dataset.data[ctx.dataIndex] / base) >= 0.02) ? 'auto' : false,
+          display: ctx => ctx.dataset.data[ctx.dataIndex] > 0,
           anchor: ctx => (ctx.dataset.data[ctx.dataIndex] / base) >= 0.1 ? 'center' : 'end',
           align: ctx => (ctx.dataset.data[ctx.dataIndex] / base) >= 0.1 ? 'center' : 'end',
-          offset: ctx => (ctx.dataset.data[ctx.dataIndex] / base) >= 0.1 ? 0 : 6,
-          formatter: (v, ctx) => ctx.chart.data.labels[ctx.dataIndex] + '\n' + fmtK(v) + '\n' + fmtPct(v / base)
+          offset: ctx => (ctx.dataset.data[ctx.dataIndex] / base) >= 0.1 ? 0 : (ctx.dataIndex % 2 ? 6 : 30),
+          formatter: (v, ctx) => {
+            const nome = ctx.chart.data.labels[ctx.dataIndex];
+            return (v / base) >= 0.1 ? nome + '\n' + fmtK(v) + '\n' + fmtPct(v / base) : nome + ' ' + fmtK(v) + ' · ' + fmtPct(v / base);
+          }
         },
         tooltip: { callbacks: { label: c => ' R$ ' + c.parsed.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' (' + fmtPct(c.parsed / base) + ')' } }
       }
