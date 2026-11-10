@@ -266,6 +266,12 @@
     .top-bar{max-width:900px;}
     .card{max-width:900px;}
     .sair-link{max-width:900px;}
+    @media (min-width: 1400px){
+      .top-bar, .card, .sair-link{max-width:1240px;}
+    }
+    @media (min-width: 1800px){
+      .top-bar, .card, .sair-link{max-width:1520px;}
+    }
 
     /* Números maiores no desktop — nas telas estreitas do celular eles ficam
        pequenos de propósito pra caber tabela de 5 colunas em 400px; aqui sobra
@@ -1197,7 +1203,7 @@
       </div>
       <div class="pos-topo-dir" id="pos-pizza-wrap">
         <p class="chart-titulo" id="pos-pizza-titulo" style="margin:0 0 4px;position:relative;z-index:2;">Composição do patrimônio</p>
-        <div style="position:relative;height:440px;overflow:hidden;"><canvas id="pos-chart-pizza"></canvas></div>
+        <div style="position:relative;height:460px;"><canvas id="pos-chart-pizza"></canvas></div>
       </div>
       </div>
 
@@ -5504,7 +5510,7 @@ function renderizarPizzaPatrimonio(){
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      layout: { padding: { top: 56, bottom: 44, left: 70, right: 70 } },
+      layout: { padding: { top: 60, bottom: 50, left: 120, right: 120 } },
       plugins: {
         legend: { display: false },
         datalabels: {
@@ -5515,12 +5521,12 @@ function renderizarPizzaPatrimonio(){
           textAlign: 'center',
           font: { size: 11, weight: '700' },
           display: ctx => ctx.dataset.data[ctx.dataIndex] > 0,
-          anchor: ctx => (ctx.dataset.data[ctx.dataIndex] / base) >= 0.1 ? 'center' : 'end',
-          align: ctx => (ctx.dataset.data[ctx.dataIndex] / base) >= 0.1 ? 'center' : 'end',
-          offset: ctx => (ctx.dataset.data[ctx.dataIndex] / base) >= 0.1 ? 0 : (ctx.dataIndex % 2 ? 6 : 30),
+          anchor: ctx => (ctx.dataset.data[ctx.dataIndex] / base) >= 0.12 ? 'center' : 'end',
+          align: ctx => (ctx.dataset.data[ctx.dataIndex] / base) >= 0.12 ? 'center' : 'end',
+          offset: ctx => (ctx.dataset.data[ctx.dataIndex] / base) >= 0.12 ? 0 : (ctx.dataIndex % 2 ? 6 : 26),
           formatter: (v, ctx) => {
             const nome = ctx.chart.data.labels[ctx.dataIndex];
-            return (v / base) >= 0.1 ? nome + '\n' + fmtK(v) + '\n' + fmtPct(v / base) : nome + ' ' + fmtK(v) + ' · ' + fmtPct(v / base);
+            return (v / base) >= 0.12 ?nome + '\n' + fmtK(v) + '\n' + fmtPct(v / base) : nome + ' ' + fmtK(v) + ' · ' + fmtPct(v / base);
           }
         },
         tooltip: { callbacks: { label: c => ' R$ ' + c.parsed.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' (' + fmtPct(c.parsed / base) + ')' } }
