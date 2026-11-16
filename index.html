@@ -361,7 +361,7 @@
     <nav class="menu-nav">
       <p class="menu-section">Resumos</p>
       <button id="menu-btn-resumo" onclick="irParaView('resumo')"><svg class="mi" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Resumo</button>
-      <button id="menu-btn-dre" onclick="irParaView('dre')"><svg class="mi" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18"/><path d="M8 17v-5"/><path d="M13 17V7"/><path d="M18 17v-3"/></svg>Análise</button>
+      <button id="menu-btn-dre" onclick="irParaView('dre')"><svg class="mi" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18"/><path d="M8 17v-5"/><path d="M13 17V7"/><path d="M18 17v-3"/></svg>Orçamento</button>
       <button id="menu-btn-casa" onclick="irParaView('casa')"><svg class="mi" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>Rateio Casa</button>
       <button id="menu-btn-fatura-btg" onclick="irParaView('fatura-btg')"><svg class="mi" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/><path d="M6 15h4"/></svg>Fatura BTG</button>
       <button id="menu-btn-posicao" onclick="irParaView('posicao')"><svg class="mi" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>Investimentos</button>
@@ -509,7 +509,7 @@
   <div id="view-lancar" class="view active">
     <div class="card">
       <h1>PittApp</h1>
-      <p class="sub">Novo lançamento</p>
+      <p class="sub">Lançamento</p>
 
       <div class="seg">
         <div class="thumb" id="thumb"></div>
@@ -630,28 +630,58 @@
   </div>
 
   <div id="view-resumo" class="view">
+    <div class="card" style="background:transparent;border:none;padding:0 22px;">
+      <h1>PittApp</h1>
+      <p class="sub">Resumo</p>
+    </div>
+
     <div class="card" id="card-patrimonio-matheus">
       <h1 class="r-title">Patrimônio</h1>
-      <div id="r-total" class="r-total"></div>
-      <div id="r-grupos"></div>
+      <div class="pos-topo">
+        <div>
+          <div id="r-total" class="r-total"></div>
+          <div id="r-grupos"></div>
+        </div>
+        <div>
+          <p class="chart-titulo" id="rs-pizza-titulo-matheus" style="margin:0 0 4px;">Composição do patrimônio</p>
+          <div style="position:relative;height:440px;"><canvas id="rs-pizza-matheus"></canvas></div>
+        </div>
+      </div>
     </div>
 
     <div class="card" id="card-patrimonio-michelle">
       <h1 class="r-title" id="titulo-patrimonio-michelle">Patrimônio Michelle</h1>
-      <div id="r-total-michelle" class="r-total"></div>
-      <div id="r-grupos-michelle"></div>
+      <div class="pos-topo">
+        <div>
+          <div id="r-total-michelle" class="r-total"></div>
+          <div id="r-grupos-michelle"></div>
+        </div>
+        <div>
+          <p class="chart-titulo" style="margin:0 0 4px;">Composição do patrimônio</p>
+          <div style="position:relative;height:420px;"><canvas id="rs-pizza-michelle"></canvas></div>
+        </div>
+      </div>
     </div>
 
     <div class="card" id="card-patrimonio-total">
       <h1 class="r-title">Patrimônio Total</h1>
-      <div id="r-total-geral" class="r-total"></div>
-      <div id="r-total-linhas"></div>
+      <div class="pos-topo">
+        <div>
+          <div id="r-total-geral" class="r-total"></div>
+          <div id="r-total-linhas"></div>
+        </div>
+        <div>
+          <p class="chart-titulo" style="margin:0 0 4px;">Composição do patrimônio</p>
+          <div style="position:relative;height:380px;"><canvas id="rs-pizza-total"></canvas></div>
+        </div>
+      </div>
     </div>
   </div>
 
   <div id="view-dre" class="view">
     <div class="card">
-      <h1 class="r-title">🚀 Análise</h1>
+      <h1>PittApp</h1>
+      <p class="sub">Orçamento</p>
 
       <div class="seg seg-2" id="dre-escopo-seg" style="max-width:220px;margin:0 auto 16px;">
         <div class="thumb" id="dre-escopo-thumb" style="transform:translateX(100%);"></div>
@@ -767,8 +797,8 @@
 
   <div id="view-casa" class="view">
     <div class="card">
-      <h1 class="r-title">🏠 Rateio Casa</h1>
-      <p class="sub" style="text-align:center;margin-top:-14px;">Acerto de Contas — desde abr/25</p>
+      <h1>PittApp</h1>
+      <p class="sub">Rateio Casa</p>
 
       <div class="field">
         <label>Mês</label>
@@ -827,7 +857,8 @@
 
   <div id="view-fatura-btg" class="view">
     <div class="card">
-      <h1 class="r-title">💳 Fatura BTG</h1>
+      <h1>PittApp</h1>
+      <p class="sub">Fatura BTG</p>
 
       <div class="destaque-card">
         <div class="destaque-titulo">Total</div>
@@ -863,8 +894,8 @@
 
   <div id="view-lancamentos" class="view">
     <div class="card">
-      <h1>Histórico Lançamentos</h1>
-      <p class="sub">Consulta e filtro</p>
+      <h1>PittApp</h1>
+      <p class="sub">Histórico Lançamentos</p>
 
       <div class="field">
         <input id="lf-texto" type="text" placeholder="Buscar por texto, categoria, conta..." oninput="filtrarLancamentos()" />
@@ -935,7 +966,7 @@
   <div id="view-treinos" class="view">
     <div class="card">
       <h1>PittApp</h1>
-      <p class="sub">Adicionar treino</p>
+      <p class="sub">Lançar Treinos</p>
 
       <div class="field">
         <label>Data</label>
@@ -990,8 +1021,8 @@
 
   <div id="view-historico-treinos" class="view">
     <div class="card">
-      <h1>💪 Histórico Treinos</h1>
-      <p class="sub">Treinos realizados</p>
+      <h1>PittApp</h1>
+      <p class="sub">Histórico Treinos</p>
 
       <div class="field">
         <input id="tf-texto" type="text" placeholder="Buscar por observação, tipo, grupo..." oninput="filtrarTreinos()" />
@@ -1075,7 +1106,7 @@
   <div id="view-analise" class="view">
     <div class="card">
       <h1>PittApp</h1>
-      <p class="sub">Análise de treinos</p>
+      <p class="sub">Treinos</p>
 
       <div class="lf-row">
         <div class="field">
@@ -1136,7 +1167,7 @@
   <div id="view-ativos" class="view">
     <div class="card">
       <h1>PittApp</h1>
-      <p class="sub">Lançar movimentação de ativo</p>
+      <p class="sub">Lançar Investimentos</p>
 
       <div class="field">
         <label>Data</label>
@@ -1189,7 +1220,7 @@
   <div id="view-posicao" class="view">
     <div class="card">
       <h1>PittApp</h1>
-      <p class="sub">Posição em FIIs e Ações</p>
+      <p class="sub">Investimentos</p>
 
       <div class="destaque-card">
         <div class="destaque-titulo">Patrimônio</div>
@@ -1261,8 +1292,8 @@
 
   <div id="view-historico" class="view">
     <div class="card">
-      <h1>Histórico Investimentos</h1>
-      <p class="sub">Lançamentos de FIIs e Ações</p>
+      <h1>PittApp</h1>
+      <p class="sub">Histórico Investimentos</p>
 
       <div class="field">
         <input id="hf-texto" type="text" placeholder="Buscar por ticker ou observação..." oninput="filtrarHistorico()" />
@@ -1300,7 +1331,7 @@
   <div id="view-ajustes" class="view">
     <div class="card">
       <h1>PittApp</h1>
-      <p class="sub">📈 Editar FIIs e Ações</p>
+      <p class="sub">Editar FIIs e Ações</p>
 
       <p class="subhead-mini">FIIs e Ações cadastrados</p>
       <div id="ajustes-tickers-lista"></div>
@@ -1324,7 +1355,7 @@
   <div id="view-ajustes-grupos" class="view">
     <div class="card">
       <h1>PittApp</h1>
-      <p class="sub">🗂️ Editar Grupos</p>
+      <p class="sub">Editar Grupos</p>
 
       <div class="seg seg-2" id="ag-fluxo-seg">
         <div class="thumb" id="ag-fluxo-thumb"></div>
@@ -1381,7 +1412,7 @@
   <div id="view-ajustes-bancos" class="view">
     <div class="card">
       <h1>PittApp</h1>
-      <p class="sub">🏢 Editar Bancos</p>
+      <p class="sub">Editar Bancos</p>
 
       <p class="subhead-mini">Bancos/Contas cadastrados</p>
       <div id="ajustes-bancos-lista"></div>
@@ -1983,7 +2014,9 @@ async function carregarResumo(){
   // Renda Fixa e as contas em moeda estrangeira (por enquanto FIIs e Ações
   // ficam juntos numa linha só, sem separar os dois).
   if(!posicaoAtivos.erro && gruposMap['Investimentos']){
-    gruposMap['Investimentos'].push({ conta: 'FIIs e Ações', moeda: 'BRL', saldo: posicaoAtivos.patrimonioTotal });
+    // FIIs e Ações em linhas separadas e clicáveis: abrem a pizza por ativo (igual à aba Investimentos).
+    gruposMap['Investimentos'].push({ conta: 'FIIs', moeda: 'BRL', saldo: posicaoAtivos.totalFiis, pizzaModo: 'fiis' });
+    gruposMap['Investimentos'].push({ conta: 'Ações', moeda: 'BRL', saldo: posicaoAtivos.totalAcoes, pizzaModo: 'acoes' });
     // Saldo Investimento: caixa dentro da carteira (aportes ainda não aplicados em
     // ativo + rendimentos). Sem ele o patrimônio de Investimentos fica subestimado.
     const saldoInvest = await calcularSaldoInvestimento();
@@ -2038,6 +2071,7 @@ async function carregarResumo(){
       const linhas = contasDaMoeda.map(it => {
         const cor = it.saldo < 0 ? 'var(--red)' : 'var(--gray2)';
         const tag = (!multiMoeda && it.moeda !== 'BRL') ? ' ' + tagMoeda(it.moeda) : '';
+        if(it.pizzaModo) return `<div class="sub-linha pos-clic" id="rs-linha-${it.pizzaModo}" onclick="selecionarPizzaResumo('${it.pizzaModo}')" style="cursor:pointer;"><span>${it.conta}</span><span style="color:${cor};font-weight:500;">${fmt(it.saldo)}</span></div>`;
         return `<div class="sub-linha"><span>${it.conta}${tag}</span><span style="color:${cor};font-weight:500;">${fmt(it.saldo)}</span></div>`;
       }).join('');
 
@@ -2067,12 +2101,104 @@ async function carregarResumo(){
       </div>`;
   }).join('');
 
+  // Pizza do Matheus: mesma composição da aba Investimentos (Caixa líquido, FIIs, Ações, Renda Fixa, Exterior)
+  let pzCaixa = 0, pzRf = 0, pzExt = 0;
+  Object.entries(gruposMap).forEach(([nomeG, its]) => {
+    its.forEach(it => {
+      if(it.pizzaModo) return;
+      const v = it.saldo * taxaBRL(it.moeda);
+      if(nomeG === 'Caixa líquido' || it.conta === 'Saldo Investimento') pzCaixa += v;
+      else if(nomeG === 'Investimentos'){
+        if((it.conta || '').toLowerCase().includes('renda fixa')) pzRf += v; else pzExt += v;
+      }
+    });
+  });
+  const ativosPz = lista => (lista || []).filter(p => p.quantidade > 0 && p.valorAtual > 0).map(p => ({ label: p.ticker, v: p.valorAtual })).sort((a, b) => b.v - a.v);
+  rsPizzaMatheus = {
+    modo: 'geral',
+    dados: {
+      geral: [
+        { label: 'Caixa líquido', v: pzCaixa },
+        { label: 'FIIs', v: posicaoAtivos.erro ? 0 : posicaoAtivos.totalFiis },
+        { label: 'Ações', v: posicaoAtivos.erro ? 0 : posicaoAtivos.totalAcoes },
+        { label: 'Renda Fixa', v: pzRf },
+        { label: 'Exterior', v: pzExt }
+      ],
+      fiis: posicaoAtivos.erro ? [] : ativosPz(posicaoAtivos.fiis),
+      acoes: posicaoAtivos.erro ? [] : ativosPz(posicaoAtivos.acoes)
+    }
+  };
+  renderizarPizzaResumoMatheus();
 
   resumoCarregado = true;
 }
 
 function toggleGrupo(i){
   document.getElementById('grupo' + i).classList.toggle('aberto');
+}
+
+// ---------- Pizzas do Resumo (Matheus, Michelle e Total) ----------
+
+const rsCharts = {};
+let rsPizzaMatheus = null;
+
+function desenharPizzaResumo(canvasId, itens){
+  const cv = document.getElementById(canvasId);
+  if(!cv || typeof Chart === 'undefined') return;
+  if(rsCharts[canvasId]){ rsCharts[canvasId].destroy(); delete rsCharts[canvasId]; }
+  const fatias = itens.filter(i => i.v > 0);
+  const base = fatias.reduce((s, i) => s + i.v, 0);
+  if(!fatias.length || base <= 0) return;
+  const paleta = ['#E8622C', '#7A3B4A', '#F2A65A', '#B5654A', '#C98A3E', '#9A5A3A', '#D19FAB', '#808080', '#E97132', '#5CA86B', '#4C8DFF', '#E0B23C'];
+  const fmtK = v => Math.abs(v) >= 1000 ? Math.round(v / 1000) + 'k' : String(Math.round(v));
+  const fmtPct = v => (v * 100).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
+  const grande = (ctx) => (ctx.dataset.data[ctx.dataIndex] / base) >= 0.12;
+  rsCharts[canvasId] = new Chart(cv.getContext('2d'), {
+    type: 'pie',
+    data: {
+      labels: fatias.map(f => f.label),
+      datasets: [{ data: fatias.map(f => f.v), backgroundColor: fatias.map((f, i) => paleta[i % paleta.length]), borderColor: '#151517', borderWidth: 2 }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      layout: { padding: { top: 60, bottom: 50, left: 120, right: 120 } },
+      plugins: {
+        legend: { display: false },
+        datalabels: {
+          color: '#F2F0EC', clip: false, textAlign: 'center', font: { size: 11, weight: '700' },
+          display: ctx => ctx.dataset.data[ctx.dataIndex] > 0,
+          anchor: ctx => grande(ctx) ? 'center' : 'end',
+          align: ctx => grande(ctx) ? 'center' : 'end',
+          offset: ctx => grande(ctx) ? 0 : (ctx.dataIndex % 2 ? 6 : 26),
+          formatter: (v, ctx) => {
+            const nome = ctx.chart.data.labels[ctx.dataIndex];
+            return (v / base) >= 0.12 ? nome + '\n' + fmtK(v) + '\n' + fmtPct(v / base) : nome + ' ' + fmtK(v) + ' · ' + fmtPct(v / base);
+          }
+        },
+        tooltip: { callbacks: { label: c => ' R$ ' + c.parsed.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' (' + fmtPct(c.parsed / base) + ')' } }
+      }
+    },
+    plugins: (typeof ChartDataLabels !== 'undefined') ? [ChartDataLabels] : []
+  });
+}
+
+function renderizarPizzaResumoMatheus(){
+  if(!rsPizzaMatheus) return;
+  const modo = rsPizzaMatheus.modo;
+  const tit = document.getElementById('rs-pizza-titulo-matheus');
+  if(tit) tit.textContent = modo === 'fiis' ? 'FIIs — por ativo' : (modo === 'acoes' ? 'Ações — por ativo' : 'Composição do patrimônio');
+  ['fiis', 'acoes'].forEach(m => {
+    const el = document.getElementById('rs-linha-' + m);
+    if(el) el.classList.toggle('pos-linha-sel', modo === m);
+  });
+  desenharPizzaResumo('rs-pizza-matheus', rsPizzaMatheus.dados[modo]);
+}
+
+function selecionarPizzaResumo(modo){
+  if(!rsPizzaMatheus) return;
+  rsPizzaMatheus.modo = (rsPizzaMatheus.modo === modo) ? 'geral' : modo;
+  renderizarPizzaResumoMatheus();
 }
 
 let totalPatrimonioMatheus = null;
@@ -2089,12 +2215,14 @@ function atualizarPatrimonioTotalGeral(){
     el.textContent = fmt(totalPatrimonioMichelle + totalPittchas);
     el.style.color = 'var(--orange)';
     if(linhas) linhas.innerHTML = linha('Michelle', totalPatrimonioMichelle) + linha('Pittchas', totalPittchas);
+    desenharPizzaResumo('rs-pizza-total', [{ label: 'Michelle', v: totalPatrimonioMichelle }, { label: 'Pittchas', v: totalPittchas }]);
     return;
   }
   if(totalPatrimonioMatheus == null || totalPatrimonioMichelle == null) return;
   el.textContent = fmt(totalPatrimonioMatheus + totalPatrimonioMichelle + totalPittchas);
   el.style.color = 'var(--orange)';
   if(linhas) linhas.innerHTML = linha('Matheus', totalPatrimonioMatheus) + linha('Michelle', totalPatrimonioMichelle) + linha('Pittchas', totalPittchas);
+  desenharPizzaResumo('rs-pizza-total', [{ label: 'Matheus', v: totalPatrimonioMatheus }, { label: 'Michelle', v: totalPatrimonioMichelle }, { label: 'Pittchas', v: totalPittchas }]);
 }
 
 // ---------- Patrimônio Michelle (mesma lógica do Resumo, só que filtrado pelas contas dela) ----------
@@ -2181,6 +2309,16 @@ async function carregarPatrimonioMichelle(){
   totalEl.textContent = fmt(totalGeral);
   totalEl.style.color = 'var(--orange)';
   totalPatrimonioMichelle = totalGeral;
+  // Pizza da Michelle: Caixa líquido (se positivo) + cada item de Investimentos
+  const itensPzMi = [];
+  Object.entries(gruposMap).forEach(([nomeG, its]) => {
+    if(nomeG === 'Investimentos') its.forEach(it => itensPzMi.push({ label: it.conta, v: it.saldo * taxaBRL(it.moeda) }));
+    else {
+      const tg = its.reduce((s, it) => s + it.saldo * taxaBRL(it.moeda), 0);
+      itensPzMi.push({ label: nomeG, v: tg });
+    }
+  });
+  desenharPizzaResumo('rs-pizza-michelle', itensPzMi);
   if(ehMichelle()){
     // Pittchas foi liberada pra ela: busca o saldo (RLS só devolve o que ela pode ver)
     const { data: contaPitt } = await sb.from('contas').select('id').eq('nome', 'Pittchas').maybeSingle();
