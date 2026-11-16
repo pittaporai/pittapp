@@ -159,7 +159,16 @@
   .menu-drawer.active{transform:translateX(0);}
   .menu-title{font-size:18px;margin:0 0 22px;}
   .menu-nav{display:flex;flex-direction:column;gap:2px;}
-  .menu-section{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:16px 0 4px;padding-left:10px;}
+  .menu-section{font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--orange);background:rgba(232,98,44,.12);border-radius:8px;margin:18px 0 6px;padding:7px 10px;}
+
+  /* Barra de rolagem escura e fina (combina com o tema), laranja ao passar o mouse */
+  html{scrollbar-width:thin;scrollbar-color:#3A3A3F transparent;}
+  *{scrollbar-width:thin;scrollbar-color:#3A3A3F transparent;}
+  ::-webkit-scrollbar{width:9px;height:9px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  ::-webkit-scrollbar-thumb{background:#3A3A3F;border-radius:8px;border:2px solid transparent;background-clip:content-box;}
+  ::-webkit-scrollbar-thumb:hover{background:var(--orange);background-clip:content-box;}
+  ::-webkit-scrollbar-corner{background:transparent;}
   .menu-section:first-child{margin-top:0;}
   .menu-nav button{text-align:left;background:none;border:none;color:var(--text);font-size:15px;padding:12px 10px;border-radius:8px;cursor:pointer;}
   .menu-nav button.active{background:var(--panel-2);color:var(--orange);font-weight:600;}
@@ -355,8 +364,8 @@
       <button id="menu-btn-posicao" onclick="irParaView('posicao')">📈 Investimentos</button>
       <button id="menu-btn-analise" onclick="irParaView('analise')">💪 Treinos</button>
 
-      <p class="menu-section">Lançar</p>
-      <button id="menu-btn-lancar" class="active" onclick="irParaView('lancar')">💵 Lançar</button>
+      <p class="menu-section">Lançamento</p>
+      <button id="menu-btn-lancar" class="active" onclick="irParaView('lancar')">💵 Lançamento</button>
       <button id="menu-btn-ativos" onclick="irParaView('ativos')">📈 Lançar Investimentos</button>
       <button id="menu-btn-treinos" onclick="irParaView('treinos')">💪 Lançar Treinos</button>
 
@@ -641,6 +650,12 @@
     <div class="card">
       <h1 class="r-title">🚀 Análise</h1>
 
+      <div class="seg seg-2" id="dre-escopo-seg" style="max-width:220px;margin:0 auto 16px;">
+        <div class="thumb" id="dre-escopo-thumb" style="transform:translateX(100%);"></div>
+        <button type="button" id="dre-escopo-mes" onclick="setDreEscopo('mes')">Mês</button>
+        <button type="button" id="dre-escopo-ano" onclick="setDreEscopo('ano')" style="color:#151517;">Ano</button>
+      </div>
+
       <div class="lf-row">
         <div class="field">
           <label>Categoria</label>
@@ -718,7 +733,7 @@
 
       <div class="destaque-sub" id="dre-chart-cards" style="margin:14px 0 4px;">
         <div class="destaque-sub-item"><span class="lbl">Orçado</span><span class="num" id="dre-card-orcado">–</span></div>
-        <div class="destaque-sub-item"><span class="lbl">Orçado YTD</span><span class="num" id="dre-card-ytd">–</span></div>
+        <div class="destaque-sub-item"><span class="lbl" id="dre-chart-lbl-ytd">Orçado YTD</span><span class="num" id="dre-card-ytd">–</span></div>
         <div class="destaque-sub-item"><span class="lbl">Realizado</span><span class="num" id="dre-card-realizado" style="color:var(--orange);">–</span></div>
         <div class="destaque-sub-item"><span class="lbl">Δ</span><span class="num" id="dre-card-delta">–</span></div>
       </div>
@@ -727,9 +742,11 @@
         <canvas id="dre-chart-barras"></canvas>
       </div>
 
+      <div id="dre-acum-wrap">
       <p class="chart-titulo" style="margin-top:22px;">Acumulado Orçado x Realizado</p>
       <div style="position:relative;height:210px;margin-top:8px;">
         <canvas id="dre-chart-acumulado"></canvas>
+      </div>
       </div>
 
       <p class="chart-titulo laranja" style="margin-top:28px;">Analítico</p>
@@ -2277,6 +2294,16 @@ let dreModelo = null;
 let dreMesSel = 0;
 
 const dreSoma = (arr, ate) => { let s = 0; for(let i = 0; i <= ate && i < arr.length; i++) s += arr[i]; return s; };
+// Escopo da Análise: 'ano' = acumulado até o mês selecionado (padrão); 'mes' = só o mês selecionado.
+let dreEscopo = 'ano';
+const dreAcum = (arr, mes) => dreEscopo === 'mes' ? (arr[mes] || 0) : dreSoma(arr, mes);
+function setDreEscopo(e){
+  dreEscopo = e;
+  document.getElementById('dre-escopo-thumb').style.transform = e === 'mes' ? 'translateX(0)' : 'translateX(100%)';
+  document.getElementById('dre-escopo-mes').style.color = e === 'mes' ? '#151517' : '';
+  document.getElementById('dre-escopo-ano').style.color = e === 'ano' ? '#151517' : '';
+  if(dreModelo) recalcularDre();
+}
 const dreSomaArr = (a, b) => a.map((v, i) => v + b[i]);
 const dreChave = (f, g, n) => f + '|' + g + '|' + n;
 
@@ -2388,8 +2415,8 @@ function dreMontarModelo(view, mesIdx){
 
   const fechar = n => {
     n.orcAno = dreSoma(n.orc, 11);
-    n.orcYtd = dreSoma(n.orc, mesIdx);
-    n.realYtd = dreSoma(n.real, mesIdx);
+    n.orcYtd = dreAcum(n.orc, mesIdx);
+    n.realYtd = dreAcum(n.real, mesIdx);
   };
   l1s.forEach(l1 => {
     l1.orc = Array(12).fill(0); l1.real = Array(12).fill(0);
@@ -2462,7 +2489,11 @@ function recalcularDre(){
   dreModelo = dreMontarModelo(view, dreMesSel);
 
   const thYtd = document.getElementById('dre-th-ytd');
-  if(thYtd) thYtd.textContent = 'YTD ' + NOMES_MES_CURTO[dreMesSel];
+  if(thYtd) thYtd.textContent = (dreEscopo === 'mes' ? 'Mês ' : 'YTD ') + NOMES_MES_CURTO[dreMesSel];
+  const lblYtd = document.getElementById('dre-res-lbl-ytd');
+  if(lblYtd) lblYtd.textContent = dreEscopo === 'mes' ? 'Orçado Mês' : 'Orçado YTD';
+  const lblCh = document.getElementById('dre-chart-lbl-ytd');
+  if(lblCh) lblCh.textContent = dreEscopo === 'mes' ? 'Orçado Mês' : 'Orçado YTD';
 
   const orcRes = dreModelo.l1s.reduce((s, l) => s + l.orcAno, 0);
   const ytdRes = dreModelo.l1s.reduce((s, l) => s + l.orcYtd, 0);
@@ -2549,6 +2580,18 @@ function cliqueDre(refIdx, nivel, i, j){
   dreAnalSel = { fluxo: path.fluxo, l2: path.l2, leaf: path.leaf, mes: null };
   renderizarTabelaDre();
   renderizarAnalitico();
+  // Leva o mesmo filtro (fluxo > grupo > subgrupo) pros gráficos
+  const fSel = document.getElementById('dre-chart-fluxo');
+  if(fSel && path.fluxo && (path.fluxo === 'entrada' || path.fluxo === 'saida')){
+    fSel.value = path.fluxo;
+    onDreChartFluxoChange();
+    const gSel = document.getElementById('dre-chart-grupo');
+    gSel.value = path.l2 || '';
+    onDreChartGrupoChange();
+    const sSel = document.getElementById('dre-chart-subgrupo');
+    sSel.value = path.leaf || '';
+    atualizarGraficosDre();
+  }
 }
 
 function cliqueGraficoDre(els){
@@ -2556,7 +2599,7 @@ function cliqueGraficoDre(els){
   const fluxo = document.getElementById('dre-chart-fluxo').value;
   const l2 = document.getElementById('dre-chart-grupo').value;
   const leaf = document.getElementById('dre-chart-subgrupo').value || undefined;
-  dreAnalSel = { fluxo, l2, leaf, mes: els[0].index };
+  dreAnalSel = { fluxo, l2, leaf, mes: dreEscopo === 'mes' ? dreModelo.mesIdx : els[0].index };
   renderizarTabelaDre();
   renderizarAnalitico();
 }
@@ -2593,11 +2636,11 @@ function renderizarAnalitico(){
   const fmtV = v => { const a = Math.abs(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); return v < 0 ? '(' + a + ')' : a; };
   const sufAno = '/' + String(DRE_ANO).slice(2);
   const itens = dreItensDoNo(node)
-    .filter(it => dreAnalSel.mes === null ? it.m <= dreModelo.mesIdx : it.m === dreAnalSel.mes)
+    .filter(it => dreAnalSel.mes === null ? (dreEscopo === 'mes' ? it.m === dreModelo.mesIdx : it.m <= dreModelo.mesIdx) : it.m === dreAnalSel.mes)
     .sort((a, b) => b.dt.localeCompare(a.dt));
   const l1Sel = dreModelo.l1s.find(x => x.fluxo === dreAnalSel.fluxo);
   const nome = [l1Sel ? l1Sel.desc : 'Resultado (Receitas e Despesas)', dreAnalSel.l2, dreAnalSel.leaf].filter(Boolean).join(' › ');
-  const periodo = dreAnalSel.mes === null ? 'YTD até ' + NOMES_MES_CURTO[dreModelo.mesIdx] + sufAno : NOMES_MES_CURTO[dreAnalSel.mes] + sufAno;
+  const periodo = dreAnalSel.mes === null ? (dreEscopo === 'mes' ? NOMES_MES_CURTO[dreModelo.mesIdx] : 'YTD até ' + NOMES_MES_CURTO[dreModelo.mesIdx]) + sufAno : NOMES_MES_CURTO[dreAnalSel.mes] + sufAno;
   sub.textContent = nome + ' — ' + periodo + ' · ' + itens.length + ' lançamento' + (itens.length === 1 ? '' : 's');
   tbody.innerHTML = itens.length ? itens.map(it => `<tr>
     <td>${new Date(it.dt).toLocaleDateString('pt-BR')}</td>
@@ -2650,7 +2693,7 @@ function dreNoGrafico(fluxo, grupoDesc, subDesc){
   if(fluxo === 'resultado'){
     const r = dreModelo.l1s.find(x => x.fluxo === 'entrada'), d = dreModelo.l1s.find(x => x.fluxo === 'saida');
     const orc = dreSomaArr(r.orc, d.orc), real = dreSomaArr(r.real, d.real);
-    return { orc, real, orcAno: dreSoma(orc, 11), orcYtd: dreSoma(orc, dreModelo.mesIdx), realYtd: dreSoma(real, dreModelo.mesIdx) };
+    return { orc, real, orcAno: dreSoma(orc, 11), orcYtd: dreAcum(orc, dreModelo.mesIdx), realYtd: dreAcum(real, dreModelo.mesIdx) };
   }
   const l1 = dreModelo.l1s.find(x => x.fluxo === fluxo);
   if(!l1) return null;
@@ -2721,11 +2764,18 @@ function atualizarGraficosDre(){
   const corOrcado = '#7A3B4A';
   const corRealizado = '#E8622C';
 
-  const maxBarras = Math.max(0, ...orcadoMeses, ...realizadoMeses.filter(v => v !== null));
+  // Escopo Mês: só o mês selecionado (um par de barras) e sem o gráfico de acumulado.
+  const modoMes = dreEscopo === 'mes';
+  const wrapAcum = document.getElementById('dre-acum-wrap');
+  if(wrapAcum) wrapAcum.style.display = modoMes ? 'none' : '';
+  const labelsBarras = modoMes ? [NOMES_MES_CURTO[mesSel]] : labels;
+  const orcBarras = modoMes ? [orcadoMeses[mesSel]] : orcadoMeses;
+  const realBarras = modoMes ? [realizadoFull[mesSel]] : realizadoMeses;
+  const maxBarras = Math.max(0, ...orcBarras, ...realBarras.filter(v => v !== null));
   if(dreChartBarras){
-    dreChartBarras.data.labels = labels;
-    dreChartBarras.data.datasets[0].data = orcadoMeses;
-    dreChartBarras.data.datasets[1].data = realizadoMeses;
+    dreChartBarras.data.labels = labelsBarras;
+    dreChartBarras.data.datasets[0].data = orcBarras;
+    dreChartBarras.data.datasets[1].data = realBarras;
     dreChartBarras.options.scales.y.suggestedMax = maxBarras * 1.18;
     dreChartBarras.update();
   } else {
@@ -2733,10 +2783,10 @@ function atualizarGraficosDre(){
     dreChartBarras = new Chart(ctx, {
       type: 'bar',
       data: {
-        labels: labels,
+        labels: labelsBarras,
         datasets: [
-          { label: 'Orçado', data: orcadoMeses, backgroundColor: corOrcado },
-          { label: 'Realizado', data: realizadoMeses, backgroundColor: corRealizado }
+          { label: 'Orçado', data: orcBarras, backgroundColor: corOrcado },
+          { label: 'Realizado', data: realBarras, backgroundColor: corRealizado }
         ]
       },
       options: {
@@ -2751,7 +2801,7 @@ function atualizarGraficosDre(){
         },
         plugins: {
           legend: { labels: { color: '#F2F0EC', font: { size: 10.5 } } },
-          datalabels: { color: '#F2F0EC', anchor: 'end', align: 'end', clip: false, font: { size: 8, weight: '600' }, formatter: fmtLblDre }
+          datalabels: { color: '#F2F0EC', anchor: 'end', align: 'end', clip: false, font: { size: 11, weight: '700' }, formatter: fmtLblDre }
         }
       },
       plugins: (typeof ChartDataLabels !== 'undefined') ? [ChartDataLabels] : []
@@ -2831,7 +2881,7 @@ function atualizarGraficosDre(){
         },
         plugins: {
           legend: { labels: { color: '#F2F0EC', font: { size: 10.5 } } },
-          datalabels: { clip: false, font: { size: 8, weight: '600' } }
+          datalabels: { clip: false, font: { size: 11, weight: '700' } }
         }
       },
       plugins: (typeof ChartDataLabels !== 'undefined') ? [ChartDataLabels] : []
@@ -5289,9 +5339,10 @@ async function carregarEvolucaoPatrimonio(posicao){
   const hint = document.getElementById('pos-chart-hint');
   if(!cv || typeof Chart === 'undefined') return;
 
-  const { data: contas } = await sb.from('contas').select('id, grupo_resumo').eq('ativa', true).not('grupo_resumo', 'is', null).neq('titular', 'Michelle');
+  const { data: contas } = await sb.from('contas').select('id, nome, grupo_resumo').eq('ativa', true).not('grupo_resumo', 'is', null).neq('titular', 'Michelle');
   const grupoDe = {};
-  (contas || []).forEach(c => { grupoDe[c.id] = c.grupo_resumo; });
+  const ehRendaFixa = {};
+  (contas || []).forEach(c => { grupoDe[c.id] = c.grupo_resumo; ehRendaFixa[c.id] = (c.nome || '').toLowerCase().includes('renda fixa'); });
 
   let lancs;
   try{ lancs = await (posLancsPromise || buscarLancsPat()); }
@@ -5324,17 +5375,19 @@ async function carregarEvolucaoPatrimonio(posicao){
   }
   pontos.push({ label: 'Hoje', cut: Infinity, key: null });
 
-  const caixa = [], inv = [];
+  const caixa = [], rfSerie = [], fiisSerie = [], acoesSerie = [];
   pontos.forEach(pt => {
     const taxa = m => (m === 'BRL' || !m) ? 1 : (pt.key ? taxaCasaMes(m, pt.key, cotMensais, config) : (cotHoje[m] != null ? cotHoje[m] : 1));
-    let cx = 0, iv = 0;
+    let cx = 0, rf = 0, ext = 0;
     let aportes = 0, resgates = 0;
     lancs.forEach(l => {
       if(new Date(l.data_hora).getTime() >= pt.cut) return;
       const v = (l.fluxo === 'entrada' ? 1 : -1) * Number(l.valor);
       const g = grupoDe[l.conta_id];
       if(g === 'Caixa líquido') cx += v * taxa(l.moeda);
-      else if(g === 'Investimentos') iv += v * taxa(l.moeda);
+      else if(g === 'Investimentos'){
+        if(ehRendaFixa[l.conta_id]) rf += v * taxa(l.moeda); else ext += v * taxa(l.moeda);
+      }
       if(l.dono === 'Matheus'){
         if(catSaidaId && l.categoria_id === catSaidaId && l.fluxo === 'saida') aportes += Number(l.valor);
         if(catEntradaId && l.categoria_id === catEntradaId && l.fluxo === 'entrada') resgates += Number(l.valor);
@@ -5356,18 +5409,25 @@ async function carregarEvolucaoPatrimonio(posicao){
       if(a.tipo === 'Compra'){ t.qc += Number(a.quantidade || 0); t.vc += v; }
       else if(a.tipo === 'Venda'){ t.qv += Number(a.quantidade || 0); }
     });
-    const custo = Object.values(porTicker).reduce((s, t) => {
+    let custoFiis = 0, custoAcoes = 0;
+    Object.entries(porTicker).forEach(([tk, t]) => {
       const q = t.qc - t.qv;
-      return s + (q > 0 && t.qc > 0 ? q * (t.vc / t.qc) : 0);
-    }, 0);
+      const c = (q > 0 && t.qc > 0 ? q * (t.vc / t.qc) : 0);
+      if(ehFii(tk)) custoFiis += c; else custoAcoes += c;
+    });
     const saldoInv = aportes - compras + rend + vendas - resgates - taxas;
-    const ativosVal = pt.key === null && posicao && !posicao.erro ? posicao.patrimonioTotal : custo;
+    const hojeOk = pt.key === null && posicao && !posicao.erro;
+    const fiisVal = hojeOk ? posicao.totalFiis : custoFiis;
+    const acoesVal = hojeOk ? posicao.totalAcoes : custoAcoes;
 
     if(pt.key === null) cx += (btgAberto || 0);
-    caixa.push(Math.round(cx));
-    inv.push(Math.round(iv + ativosVal + saldoInv));
+    // Caixa líquido leva junto o exterior (Nomad/Wise/BTG Internacional) e o caixa dentro da carteira.
+    caixa.push(Math.round(cx + ext + saldoInv));
+    rfSerie.push(Math.round(rf));
+    fiisSerie.push(Math.round(fiisVal));
+    acoesSerie.push(Math.round(acoesVal));
   });
-  const total = caixa.map((v, i) => v + inv[i]);
+  const total = caixa.map((v, i) => v + rfSerie[i] + fiisSerie[i] + acoesSerie[i]);
 
   const fmtK = v => {
     if(v === null || v === undefined) return '';
@@ -5378,13 +5438,14 @@ async function carregarEvolucaoPatrimonio(posicao){
   };
   const labels = pontos.map(p => p.label);
   const maxTot = Math.max(0, ...total);
-  const minTot = Math.min(0, ...caixa, ...inv);
 
   if(posChartPatrimonio){
     posChartPatrimonio.data.labels = labels;
     posChartPatrimonio.data.datasets[0].data = caixa;
-    posChartPatrimonio.data.datasets[1].data = inv;
-    posChartPatrimonio.data.datasets[2].data = total;
+    posChartPatrimonio.data.datasets[1].data = rfSerie;
+    posChartPatrimonio.data.datasets[2].data = fiisSerie;
+    posChartPatrimonio.data.datasets[3].data = acoesSerie;
+    posChartPatrimonio.data.datasets[4].data = total;
     posChartPatrimonio.options.scales.y.suggestedMax = maxTot * 1.12;
     posChartPatrimonio.update();
   } else {
@@ -5393,8 +5454,10 @@ async function carregarEvolucaoPatrimonio(posicao){
       data: {
         labels,
         datasets: [
-          { label: 'Caixa líquido', data: caixa, backgroundColor: '#7A3B4A', stack: 'pat', datalabels: { color: '#fff', anchor: 'center', align: 'center', formatter: fmtK } },
-          { label: 'Investimentos', data: inv, backgroundColor: '#E8622C', stack: 'pat', datalabels: { color: '#fff', anchor: 'center', align: 'center', formatter: fmtK } },
+          { label: 'Caixa líquido', data: caixa, backgroundColor: '#E8622C', stack: 'pat', datalabels: { color: '#fff', anchor: 'center', align: 'center', display: 'auto', formatter: fmtK } },
+          { label: 'Renda Fixa', data: rfSerie, backgroundColor: '#B5654A', stack: 'pat', datalabels: { color: '#fff', anchor: 'center', align: 'center', display: 'auto', formatter: fmtK } },
+          { label: 'FIIs', data: fiisSerie, backgroundColor: '#7A3B4A', stack: 'pat', datalabels: { color: '#fff', anchor: 'center', align: 'center', display: 'auto', formatter: fmtK } },
+          { label: 'Ações', data: acoesSerie, backgroundColor: '#F2A65A', stack: 'pat', datalabels: { color: '#151517', anchor: 'center', align: 'center', display: 'auto', formatter: fmtK } },
           { type: 'line', label: 'Total', data: total, borderWidth: 0, showLine: false, pointRadius: 0, pointHoverRadius: 0, datalabels: { color: '#F2F0EC', anchor: 'end', align: 'top', offset: 2, font: { size: 9, weight: '700' }, formatter: fmtK } }
         ]
       },
@@ -5414,7 +5477,7 @@ async function carregarEvolucaoPatrimonio(posicao){
       plugins: (typeof ChartDataLabels !== 'undefined') ? [ChartDataLabels] : []
     });
   }
-  if(hint) hint.textContent = 'Patrimônio = Caixa líquido + Investimentos. Meses anteriores: saldos na taxa média do mês e FIIs/Ações a custo (ainda não guardamos histórico de cotações); "Hoje" bate com o Resumo (FIIs/Ações a mercado, BTG+ Michelle a receber incluso no caixa).';
+  if(hint) hint.textContent = 'Patrimônio = Caixa líquido (inclui exterior) + Renda Fixa + FIIs + Ações. Meses anteriores: saldos na taxa média do mês e FIIs/Ações a custo (ainda não guardamos histórico de cotações); "Hoje" bate com o Resumo (FIIs/Ações a mercado, BTG+ Michelle a receber incluso no caixa).';
 }
 
 // ---------- Pizza: composição do patrimônio (e, ao clicar em FIIs/Ações, por ativo) ----------
