@@ -173,6 +173,9 @@
   .menu-nav button{text-align:left;background:none;border:none;color:var(--text);font-size:15px;padding:12px 10px;border-radius:8px;cursor:pointer;}
   .menu-nav button.active{background:var(--panel-2);color:var(--orange);font-weight:600;}
   .menu-nav button:active{background:var(--panel-2);}
+  .menu-nav button{display:flex;align-items:center;}
+  .menu-nav button .mi{width:19px;height:19px;min-width:19px;margin-right:11px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;opacity:.8;}
+  .menu-nav button.active .mi{opacity:1;}
   .menu-hint{font-size:11px;color:var(--muted);margin-top:24px;line-height:1.5;}
 
   .lf-row{display:flex;gap:10px;}
@@ -357,27 +360,27 @@
     <h2 class="menu-title">PittApp</h2>
     <nav class="menu-nav">
       <p class="menu-section">Resumos</p>
-      <button id="menu-btn-resumo" onclick="irParaView('resumo')">💵 Resumo</button>
-      <button id="menu-btn-dre" onclick="irParaView('dre')">📊 Análise</button>
-      <button id="menu-btn-casa" onclick="irParaView('casa')">🏠 Rateio Casa</button>
-      <button id="menu-btn-fatura-btg" onclick="irParaView('fatura-btg')">💳 Fatura BTG</button>
-      <button id="menu-btn-posicao" onclick="irParaView('posicao')">📈 Investimentos</button>
-      <button id="menu-btn-analise" onclick="irParaView('analise')">💪 Treinos</button>
+      <button id="menu-btn-resumo" onclick="irParaView('resumo')"><svg class="mi" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Resumo</button>
+      <button id="menu-btn-dre" onclick="irParaView('dre')"><svg class="mi" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18"/><path d="M8 17v-5"/><path d="M13 17V7"/><path d="M18 17v-3"/></svg>Análise</button>
+      <button id="menu-btn-casa" onclick="irParaView('casa')"><svg class="mi" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>Rateio Casa</button>
+      <button id="menu-btn-fatura-btg" onclick="irParaView('fatura-btg')"><svg class="mi" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/><path d="M6 15h4"/></svg>Fatura BTG</button>
+      <button id="menu-btn-posicao" onclick="irParaView('posicao')"><svg class="mi" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>Investimentos</button>
+      <button id="menu-btn-analise" onclick="irParaView('analise')"><svg class="mi" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5v11M3.5 9v6M17.5 6.5v11M20.5 9v6M6.5 12h11"/></svg>Treinos</button>
 
       <p class="menu-section">Lançamento</p>
-      <button id="menu-btn-lancar" class="active" onclick="irParaView('lancar')">💵 Lançamento</button>
-      <button id="menu-btn-ativos" onclick="irParaView('ativos')">📈 Lançar Investimentos</button>
-      <button id="menu-btn-treinos" onclick="irParaView('treinos')">💪 Lançar Treinos</button>
+      <button id="menu-btn-lancar" class="active" onclick="irParaView('lancar')"><svg class="mi" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-2"/><path d="M21 12h-5a2 2 0 0 0 0 4h5z"/><path d="M8 11v4M6 13h4"/></svg>Lançamento</button>
+      <button id="menu-btn-ativos" onclick="irParaView('ativos')"><svg class="mi" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 5-5"/><path d="M17 4h4M19 2v4"/></svg>Lançar Investimentos</button>
+      <button id="menu-btn-treinos" onclick="irParaView('treinos')"><svg class="mi" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5v11M3.5 9v6M17.5 6.5v11M20.5 9v6M6.5 12h11"/><path d="M12 3v3M10.5 4.5h3"/></svg>Lançar Treinos</button>
 
       <p class="menu-section">Histórico</p>
-      <button id="menu-btn-lancamentos" onclick="irParaView('lancamentos')">💵 Histórico Lançamentos</button>
-      <button id="menu-btn-historico" onclick="irParaView('historico')">📈 Histórico Investimentos</button>
-      <button id="menu-btn-historico-treinos" onclick="irParaView('historico-treinos')">💪 Histórico Treinos</button>
+      <button id="menu-btn-lancamentos" onclick="irParaView('lancamentos')"><svg class="mi" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-2"/><path d="M21 12h-5a2 2 0 0 0 0 4h5z"/></svg>Histórico Lançamentos</button>
+      <button id="menu-btn-historico" onclick="irParaView('historico')"><svg class="mi" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>Histórico Investimentos</button>
+      <button id="menu-btn-historico-treinos" onclick="irParaView('historico-treinos')"><svg class="mi" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5v11M3.5 9v6M17.5 6.5v11M20.5 9v6M6.5 12h11"/></svg>Histórico Treinos</button>
 
       <p class="menu-section">Ajustes</p>
-      <button id="menu-btn-ajustes" onclick="irParaView('ajustes')">📈 Editar FIIs e Ações</button>
-      <button id="menu-btn-ajustes-grupos" onclick="irParaView('ajustes-grupos')">🗂️ Editar Grupos</button>
-      <button id="menu-btn-ajustes-bancos" onclick="irParaView('ajustes-bancos')">🏢 Editar Bancos</button>
+      <button id="menu-btn-ajustes" onclick="irParaView('ajustes')"><svg class="mi" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>Editar FIIs e Ações</button>
+      <button id="menu-btn-ajustes-grupos" onclick="irParaView('ajustes-grupos')"><svg class="mi" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Editar Grupos</button>
+      <button id="menu-btn-ajustes-bancos" onclick="irParaView('ajustes-bancos')"><svg class="mi" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10l9-6 9 6"/><path d="M5 10v8M9.5 10v8M14.5 10v8M19 10v8"/><path d="M3 21h18"/></svg>Editar Bancos</button>
     </nav>
     <p class="menu-hint">Mais ajustes em breve: gerenciar grupos/subgrupos, reclassificar lançamentos em massa.</p>
   </div>
@@ -5427,7 +5430,8 @@ async function carregarEvolucaoPatrimonio(posicao){
     fiisSerie.push(Math.round(fiisVal));
     acoesSerie.push(Math.round(acoesVal));
   });
-  const total = caixa.map((v, i) => v + rfSerie[i] + fiisSerie[i] + acoesSerie[i]);
+  const fiisAcoesSerie = fiisSerie.map((v, i) => v + acoesSerie[i]);
+  const total = caixa.map((v, i) => v + rfSerie[i] + fiisAcoesSerie[i]);
 
   const fmtK = v => {
     if(v === null || v === undefined) return '';
@@ -5443,9 +5447,8 @@ async function carregarEvolucaoPatrimonio(posicao){
     posChartPatrimonio.data.labels = labels;
     posChartPatrimonio.data.datasets[0].data = caixa;
     posChartPatrimonio.data.datasets[1].data = rfSerie;
-    posChartPatrimonio.data.datasets[2].data = fiisSerie;
-    posChartPatrimonio.data.datasets[3].data = acoesSerie;
-    posChartPatrimonio.data.datasets[4].data = total;
+    posChartPatrimonio.data.datasets[2].data = fiisAcoesSerie;
+    posChartPatrimonio.data.datasets[3].data = total;
     posChartPatrimonio.options.scales.y.suggestedMax = maxTot * 1.12;
     posChartPatrimonio.update();
   } else {
@@ -5456,8 +5459,7 @@ async function carregarEvolucaoPatrimonio(posicao){
         datasets: [
           { label: 'Caixa líquido', data: caixa, backgroundColor: '#E8622C', stack: 'pat', datalabels: { color: '#fff', anchor: 'center', align: 'center', display: 'auto', formatter: fmtK } },
           { label: 'Renda Fixa', data: rfSerie, backgroundColor: '#B5654A', stack: 'pat', datalabels: { color: '#fff', anchor: 'center', align: 'center', display: 'auto', formatter: fmtK } },
-          { label: 'FIIs', data: fiisSerie, backgroundColor: '#7A3B4A', stack: 'pat', datalabels: { color: '#fff', anchor: 'center', align: 'center', display: 'auto', formatter: fmtK } },
-          { label: 'Ações', data: acoesSerie, backgroundColor: '#F2A65A', stack: 'pat', datalabels: { color: '#151517', anchor: 'center', align: 'center', display: 'auto', formatter: fmtK } },
+          { label: 'FIIs e Ações', data: fiisAcoesSerie, backgroundColor: '#7A3B4A', stack: 'pat', datalabels: { color: '#fff', anchor: 'center', align: 'center', display: 'auto', formatter: fmtK } },
           { type: 'line', label: 'Total', data: total, borderWidth: 0, showLine: false, pointRadius: 0, pointHoverRadius: 0, datalabels: { color: '#F2F0EC', anchor: 'end', align: 'top', offset: 2, font: { size: 9, weight: '700' }, formatter: fmtK } }
         ]
       },
@@ -5477,7 +5479,7 @@ async function carregarEvolucaoPatrimonio(posicao){
       plugins: (typeof ChartDataLabels !== 'undefined') ? [ChartDataLabels] : []
     });
   }
-  if(hint) hint.textContent = 'Patrimônio = Caixa líquido (inclui exterior) + Renda Fixa + FIIs + Ações. Meses anteriores: saldos na taxa média do mês e FIIs/Ações a custo (ainda não guardamos histórico de cotações); "Hoje" bate com o Resumo (FIIs/Ações a mercado, BTG+ Michelle a receber incluso no caixa).';
+  if(hint) hint.textContent = 'Patrimônio = Caixa líquido (inclui exterior) + Renda Fixa + FIIs e Ações. Meses anteriores: saldos na taxa média do mês e FIIs/Ações a custo (ainda não guardamos histórico de cotações); "Hoje" bate com o Resumo (FIIs/Ações a mercado, BTG+ Michelle a receber incluso no caixa).';
 }
 
 // ---------- Pizza: composição do patrimônio (e, ao clicar em FIIs/Ações, por ativo) ----------
